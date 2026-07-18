@@ -27,7 +27,8 @@ RUN apk add --no-cache libc6-compat
 # Copy standalone Next.js server
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# public/ directory may not exist; copy only if present
+COPY --from=builder /app/public* ./public
 
 # Copy compiled worker
 COPY --from=builder /app/dist ./dist
