@@ -2,6 +2,7 @@ import { getLeadStory, getSecondaryStories, getLatestNews, getVisibleCategories,
 import { ArticleCard } from "@/components/article-card";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 300; // Revalidate every 5 minutes
 
 export default async function HomePage() {

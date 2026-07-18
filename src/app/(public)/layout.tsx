@@ -4,6 +4,8 @@ import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import "./public.css";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata() {
   const settings = await getSiteSettingsPublic();
   const name = (settings?.publicationName as string) || "Behind The Headlines";

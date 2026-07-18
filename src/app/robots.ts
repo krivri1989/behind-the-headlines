@@ -1,6 +1,7 @@
 import { getSiteSettingsPublic } from "@/lib/public-data";
 import type { MetadataRoute } from "next";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
