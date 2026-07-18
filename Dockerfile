@@ -33,6 +33,10 @@ COPY --from=builder /app/public* ./public
 # Copy compiled worker
 COPY --from=builder /app/dist ./dist
 
+# Copy node_modules so the worker can resolve its dependencies
+# (Next.js standalone only bundles deps used by the web app)
+COPY --from=builder /app/node_modules ./node_modules
+
 # Copy seed and test scripts
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/package*.json ./
