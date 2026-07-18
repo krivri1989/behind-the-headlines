@@ -2,8 +2,6 @@ services:
   app:
     image: ghcr.io/krivri1989/behind-the-headlines:latest
     container_name: bth-app
-    ports:
-      - "3000:3000"
     environment:
       - NODE_ENV=production
       - APP_URL=${APP_URL}
@@ -23,6 +21,16 @@ services:
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bth.rule=Host(`behindtheheadlines.in`) || Host(`www.behindtheheadlines.in`)"
+      - "traefik.http.routers.bth.entrypoints=websecure"
+      - "traefik.http.routers.bth.tls.certresolver=letsencrypt"
+      - "traefik.http.services.bth.loadbalancer.server.port=3000"
+      - "traefik.http.routers.bth-http.rule=Host(`behindtheheadlines.in`) || Host(`www.behindtheheadlines.in`)"
+      - "traefik.http.routers.bth-http.entrypoints=web"
+      - "traefik.http.routers.bth-http.middlewares=https-redirect"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
     restart: unless-stopped
 
   worker:
