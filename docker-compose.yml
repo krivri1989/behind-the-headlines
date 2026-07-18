@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    container_name: bth-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - APP_URL=${APP_URL}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - MONGODB_URI=${MONGODB_URI}
+      - REDIS_URL=${REDIS_URL}
+      - RUSTFS_ENDPOINT=${RUSTFS_ENDPOINT}
+      - RUSTFS_REGION=${RUSTFS_REGION}
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY}
+      - RUSTFS_BUCKET=${RUSTFS_BUCKET}
+      - RUSTFS_PUBLIC_URL=${RUSTFS_PUBLIC_URL}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}
+      - INITIAL_ADMIN_NAME=${INITIAL_ADMIN_NAME}
+      - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: bth-worker
+    command: ["node", "dist/worker/index.js"]
+    environment:
+      - NODE_ENV=production
+      - APP_URL=${APP_URL}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - MONGODB_URI=${MONGODB_URI}
+      - REDIS_URL=${REDIS_URL}
+      - RUSTFS_ENDPOINT=${RUSTFS_ENDPOINT}
+      - RUSTFS_REGION=${RUSTFS_REGION}
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY}
+      - RUSTFS_BUCKET=${RUSTFS_BUCKET}
+      - RUSTFS_PUBLIC_URL=${RUSTFS_PUBLIC_URL}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
