@@ -102,31 +102,11 @@ export function PublicFooter({
             {contactEmail && <p className="footer-contact"><Mail size={14} /> {contactEmail}</p>}
           </div>
 
-          <div className="footer-col">
-            <h4>Sections</h4>
-            <ul>
-              {categories.slice(0, 8).map((cat) => (
-                <li key={cat.id}><Link href={"/category/" + cat.slug}>{cat.name}</Link></li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="footer-col">
-            <h4>Quick Links</h4>
-            <ul>
-              <li><Link href="/about">About Us</Link></li>
-              <li><Link href="/contact">Contact</Link></li>
-              <li><Link href="/privacy">Privacy Policy</Link></li>
-              <li><Link href="/terms">Terms of Use</Link></li>
-              <li><Link href="/copyright">Copyright</Link></li>
-            </ul>
-          </div>
-
           {menuItems.length > 0 && (
             <div className="footer-col">
-              <h4>More</h4>
+              <h4>Quick Links</h4>
               <ul>
-                {menuItems.map((item, i) => (
+                {menuItems.filter((item) => item.visible).sort((a, b) => a.order - b.order).map((item, i) => (
                   <li key={i}><Link href={item.href}>{item.label}</Link></li>
                 ))}
               </ul>

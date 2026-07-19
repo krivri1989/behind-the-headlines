@@ -197,13 +197,7 @@ export function PublicHeader({
       {/* Navigation bar */}
       <nav className={"header-nav" + (mobileOpen ? " mobile-open" : "")}>
         <div className="header-nav-inner">
-          <Link href="/" className="nav-item" onClick={() => setMobileOpen(false)}>Home</Link>
-          {categories.map((cat) => (
-            <Link key={cat.id} href={"/category/" + cat.slug} className="nav-item" onClick={() => setMobileOpen(false)}>
-              {cat.name}
-            </Link>
-          ))}
-          {menuItems.map((item, i) => (
+          {menuItems.filter((item) => item.visible).sort((a, b) => a.order - b.order).map((item, i) => (
             <Link key={i} href={item.href} className="nav-item" onClick={() => setMobileOpen(false)}>
               {item.label}
             </Link>
