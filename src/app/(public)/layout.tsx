@@ -3,6 +3,7 @@ import { getSiteSettingsPublic, getVisibleCategories, getPublicMenu } from "@/li
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { CookieConsent } from "@/components/cookie-consent";
+import { SiteSettingsProvider } from "@/components/site-settings-provider";
 import "./public.css";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +65,9 @@ export default async function PublicLayout({ children }: { children: ReactNode }
         categories={categories}
         menuItems={headerMenu}
       />
-      <main className="public-main">{children}</main>
+      <main className="public-main">
+        <SiteSettingsProvider settings={settings}>{children}</SiteSettingsProvider>
+      </main>
       <PublicFooter
         settings={settings}
         categories={categories}

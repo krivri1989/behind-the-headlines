@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Search, Menu, X, Facebook, Twitter, Linkedin, Youtube, Instagram, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 // WhatsApp icon — not in lucide, use inline SVG
 function WhatsAppIcon({ size = 14 }: { size?: number }) {
@@ -59,6 +59,12 @@ export function PublicHeader({
   const tagline = (settings?.tagline as string) || "";
   const logoUrl = (settings?.logoUrl as string) || "";
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [navFixed, setNavFixed] = useState(false);
+  const [navHeight, setNavHeight] = useState(0);
+  const navRef = useRef<HTMLElement>(null);
+  const fixedRef = useRef(false);
+  const originalTopRef = useRef(0);
   const [weather, setWeather] = useState<LocationWeather>({ place: "", temp: null, loading: true, error: false });
 
   const [currentTime, setCurrentTime] = useState("");
@@ -87,6 +93,50 @@ export function PublicHeader({
   }, []);
 
   useEffect(() => {
+    function handleScroll() {
+      // Don't apply fixed nav logic on mobile (drawer handles its own positioning)
+      if (window.innerWidth <= 768) {
+        if (fixedRef.current) { fixedRef.current = false; setNavFixed(false); }
+        return;
+      }
+
+      const nav = navRef.current;
+      if (!nav) return;
+
+      if (!fixedRef.current) {
+        originalTopRef.current = nav.offsetTop;
+      }
+
+      if (window.scrollY >= originalTopRef.current && !fixedRef.current) {
+        fixedRef.current = true;
+        setNavHeight(nav.offsetHeight);
+        setNavFixed(true);
+      } else if (window.scrollY < originalTopRef.current && fixedRef.current) {
+        fixedRef.current = false;
+        setNavFixed(false);
+      }
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
+  useEffect(() => {
     if (!navigator.geolocation) {
       setWeather({ place: "", temp: null, loading: false, error: true });
       return;
@@ -108,6 +158,7 @@ export function PublicHeader({
   }, []);
 
   const dateTimeString = currentTime ? `${today} | Updated ${currentTime} IST` : today;
+  const dateOnly = today;
 
   const socialLinks = [
     { icon: Facebook, href: "https://www.facebook.com/bthnews/", label: "Facebook", className: "social-facebook" },
@@ -132,6 +183,7 @@ export function PublicHeader({
             </div>
 
             <span className="header-date">{dateTimeString}</span>
+            <span className="header-date-mobile">{dateOnly}</span>
           </div>
 
           <div className="header-topbar-right">
@@ -191,17 +243,70 @@ export function PublicHeader({
             <Search size={16} />
             <input type="text" name="q" placeholder="Search news..." aria-label="Search" />
           </form>
+          <button className="header-mobile-search-toggle" onClick={() => setMobileSearchOpen(!mobileSearchOpen)} aria-label="Search">
+            <Search size={20} />
+          </button>
         </div>
+        {/* Mobile expandable search */}
+        {mobileSearchOpen && (
+          <form action="/search" method="GET" className="header-mobile-search">
+            <Search size={16} />
+            <input type="text" name="q" placeholder="Search news..." aria-label="Search" autoFocus />
+          </form>
+        )}
       </div>
 
       {/* Navigation bar */}
-      <nav className={"header-nav" + (mobileOpen ? " mobile-open" : "")}>
+      {navFixed && <div className="header-nav-placeholder" style={{ height: navHeight }} aria-hidden="true" />}
+
+      {/* Mobile slide-in backdrop */}
+      {mobileOpen && (
+        <div className="header-nav-backdrop" onClick={() => setMobileOpen(false)} />
+      )}
+
+      <nav ref={navRef} className={"header-nav" + (mobileOpen ? " mobile-open" : "") + (navFixed ? " header-nav-fixed" : "")}>
         <div className="header-nav-inner">
-          {menuItems.filter((item) => item.visible).sort((a, b) => a.order - b.order).map((item, i) => (
-            <Link key={i} href={item.href} className="nav-item" onClick={() => setMobileOpen(false)}>
-              {item.label}
+          {/* Mobile drawer header — logo + close button */}
+          <div className="header-nav-drawer-header">
+            <Link href="/" onClick={() => setMobileOpen(false)} className="header-nav-drawer-logo">
+              {logoUrl && !logoError ? (
+                <img src={logoUrl} alt={publicationName} height={36} />
+              ) : (
+                <span className="header-logo-text">{publicationName}</span>
+              )}
             </Link>
-          ))}
+            <button className="header-nav-drawer-close" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+              <X size={22} />
+            </button>
+          </div>
+
+          {/* Nav items */}
+          <div className="header-nav-drawer-items">
+            {menuItems.filter((item) => item.visible).sort((a, b) => a.order - b.order).map((item, i) => (
+              <Link key={i} href={item.href} className="nav-item" onClick={() => setMobileOpen(false)}>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Mobile drawer footer — social links */}
+          <div className="header-nav-drawer-footer">
+            <span className="header-nav-drawer-footer-label">Follow us</span>
+            <div className="header-nav-drawer-social">
+              {socialLinks.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={"header-nav-drawer-social-link " + social.className}
+                  aria-label={social.label}
+                >
+                  <social.icon size={18} />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </nav>
     </header>

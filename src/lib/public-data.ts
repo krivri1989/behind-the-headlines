@@ -61,7 +61,7 @@ function toPublicArticle(a: Record<string, unknown>): PublicArticle {
     author: author ? { id: String(author._id), name: String(author.name) } : { id: "", name: "Unknown" },
     categories,
     tags,
-    featuredImage: fi ? {
+    featuredImage: fi && fi.url ? {
       url: String(fi.url),
       alt: String(fi.alt || ""),
       caption: String(fi.caption || ""),
@@ -101,6 +101,7 @@ const defaultSiteSettings: Record<string, unknown> = {
   footerTextColor: "#ffffff",
   logoUrl: "https://media.behindtheheadlines.in/behind-the-headlines-media/media/1784439072427-auz5ye.jpg",
   faviconUrl: "",
+  defaultImageUrl: "",
 };
 
 export async function getSiteSettingsPublic(): Promise<Record<string, unknown>> {

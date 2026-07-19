@@ -91,6 +91,7 @@ const siteSettingsSchema = new Schema({
   footerTextColor: { type: String, default: "#ffffff" },
   logoUrl: { type: String, default: "" },
   faviconUrl: { type: String, default: "" },
+  defaultImageUrl: { type: String, default: "" },
   rssDefaultAuthor: { type: String, default: "RSS Feed" },
   articlePageSize: { type: Number, default: 24 },
   enableComments: { type: Boolean, default: false },
@@ -108,3 +109,15 @@ const commentSchema = new Schema({
   status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending", index: true },
 }, { timestamps: true });
 export const Comment = models.Comment ?? model("Comment", commentSchema);
+
+const pageSchema = new Schema({
+  title: { type: String, required: true },
+  slug: { type: String, required: true, unique: true, index: true },
+  content: { type: String, default: "" },
+  excerpt: { type: String, default: "" },
+  status: { type: String, enum: ["draft", "published"], default: "draft", index: true },
+  seoTitle: { type: String, default: "" },
+  seoDescription: { type: String, default: "" },
+  authorId: { type: Schema.Types.ObjectId, ref: "User" },
+}, { timestamps: true });
+export const Page = models.Page ?? model("Page", pageSchema);

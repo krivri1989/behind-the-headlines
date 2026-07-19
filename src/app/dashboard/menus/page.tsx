@@ -1,6 +1,6 @@
 "use client";
 
-import { GripVertical, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, Plus, Trash2, X, Pencil, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 
@@ -20,6 +20,8 @@ export default function MenusPage() {
   const [href, setHref] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingHref, setEditingHref] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -84,6 +86,25 @@ export default function MenusPage() {
     const next = items.map((entry) => entry.href === item.href ? { ...entry, visible: !entry.visible } : entry);
     setItems(next);
     saveMenu(location, next);
+  };
+
+  const startEdit = (item: MenuItem) => {
+    setEditingHref(item.href);
+    setEditLabel(item.label);
+  };
+
+  const cancelEdit = () => {
+    setEditingHref(null);
+    setEditLabel("");
+  };
+
+  const saveEdit = () => {
+    if (!editingHref || !editLabel.trim()) return;
+    const next = items.map((entry) => entry.href === editingHref ? { ...entry, label: editLabel.trim() } : entry);
+    setItems(next);
+    saveMenu(location, next);
+    setEditingHref(null);
+    setEditLabel("");
   };
 
   const submit = (event: React.FormEvent) => {
@@ -164,7 +185,20 @@ export default function MenusPage() {
           <div className="menu-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={() => { if (dragged) addToSelected(dragged); setDragged(null); }}>Drop a master menu item here to add it to the {location}.</div>
           {items.map((item, index) => (
             <div className="menu-row" draggable onDragStart={() => setDragged(item)} onDragOver={(event) => event.preventDefault()} onDrop={() => reorder(item)} key={`${item.href}-${index}`}>
-              <GripVertical size={18} /><span>{index + 1}</span><strong>{item.label}</strong><span>{item.href}</span>
+              <GripVertical size={18} /><span>{index + 1}</span>
+              {editingHref === item.href ? (
+                <span className="menu-edit-wrap">
+                  <input className="menu-edit-input" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }} autoFocus />
+                  <button className="menu-edit-save" onClick={saveEdit} type="button" aria-label="Save"><Check size={14} /></button>
+                  <button className="menu-edit-cancel" onClick={cancelEdit} type="button" aria-label="Cancel"><X size={14} /></button>
+                </span>
+              ) : (
+                <strong onDoubleClick={() => startEdit(item)}>{item.label}</strong>
+              )}
+              <span>{item.href}</span>
+              {editingHref !== item.href && (
+                <button className="menu-edit-btn" onClick={() => startEdit(item)} type="button" aria-label={`Edit ${item.label}`}><Pencil size={14} /></button>
+              )}
               <button className={`switch ${item.visible ? "on" : ""}`} onClick={() => toggleVisible(item)} type="button" role="switch" aria-checked={item.visible}><span /></button>
               <button className="remove-menu-item" onClick={() => removeItem(item)} type="button" aria-label={`Remove ${item.label}`}><Trash2 size={16} /></button>
             </div>

@@ -43,6 +43,7 @@ export default function SettingsPage() {
     footerTextColor: "#ffffff",
     logoUrl: "",
     faviconUrl: "",
+    defaultImageUrl: "",
   });
 
   const BRAND_DEFAULTS = {
@@ -73,11 +74,13 @@ export default function SettingsPage() {
   const [auditPreview, setAuditPreview] = useState<string[]>([]);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [uploadingDefaultImage, setUploadingDefaultImage] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
+  const defaultImageInputRef = useRef<HTMLInputElement | null>(null);
 
-  async function uploadBrandingImage(file: File, field: "logoUrl" | "faviconUrl") {
-    const setUploading = field === "logoUrl" ? setUploadingLogo : setUploadingFavicon;
+  async function uploadBrandingImage(file: File, field: "logoUrl" | "faviconUrl" | "defaultImageUrl") {
+    const setUploading = field === "logoUrl" ? setUploadingLogo : field === "faviconUrl" ? setUploadingFavicon : setUploadingDefaultImage;
     setUploading(true);
     try {
       const formData = new FormData();
@@ -107,6 +110,7 @@ export default function SettingsPage() {
           footerTextColor: (data.footerTextColor as string) || "#ffffff",
           logoUrl: (data.logoUrl as string) || "",
           faviconUrl: (data.faviconUrl as string) || "",
+          defaultImageUrl: (data.defaultImageUrl as string) || "",
         });
         if (data.rssDefaultAuthor !== undefined) setAdvanced({ rssDefaultAuthor: (data.rssDefaultAuthor as string) || "RSS Feed", articlePageSize: String(data.articlePageSize ?? 24), enableComments: Boolean(data.enableComments), cookieConsent: Boolean(data.cookieConsent) });
         if (Array.isArray(data.adPlacements)) {
@@ -182,6 +186,7 @@ export default function SettingsPage() {
       footerTextColor: branding.footerTextColor,
       logoUrl: branding.logoUrl,
       faviconUrl: branding.faviconUrl,
+      defaultImageUrl: branding.defaultImageUrl,
       rssDefaultAuthor: advanced.rssDefaultAuthor,
       articlePageSize: Number(advanced.articlePageSize),
       enableComments: advanced.enableComments,
@@ -411,6 +416,29 @@ export default function SettingsPage() {
                 <input ref={faviconInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadBrandingImage(file, "faviconUrl"); event.target.value = ""; }} />
               </div>
               <small className="color-hint">Shown in the browser tab (square PNG or ICO — recommended 32×32 or 64×64)</small>
+            </label>
+            <label className="full-width">
+              Default article image
+              <div className="branding-upload">
+                {branding.defaultImageUrl ? (
+                  <div className="branding-preview">
+                    <img src={branding.defaultImageUrl} alt="Default article image preview" />
+                    <div className="branding-preview-actions">
+                      <button type="button" className="secondary-button" onClick={() => defaultImageInputRef.current?.click()} disabled={uploadingDefaultImage}>
+                        {uploadingDefaultImage ? <Loader2 size={14} className="spinning" /> : <Upload size={14} />} Replace
+                      </button>
+                      <button type="button" className="color-reset" title="Remove default image" onClick={() => setBranding({ ...branding, defaultImageUrl: "" })}><X size={14} /></button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="branding-dropzone" onClick={() => defaultImageInputRef.current?.click()} disabled={uploadingDefaultImage}>
+                    {uploadingDefaultImage ? <Loader2 size={20} className="spinning" /> : <ImageIcon size={24} />}
+                    <span>{uploadingDefaultImage ? "Uploading…" : "Click to upload default article image"}</span>
+                  </button>
+                )}
+                <input ref={defaultImageInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadBrandingImage(file, "defaultImageUrl"); event.target.value = ""; }} />
+              </div>
+              <small className="color-hint">Shown when an article has no featured image (any aspect ratio, landscape preferred)</small>
             </label>
           </div>
         </section>

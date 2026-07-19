@@ -39,7 +39,7 @@ export default async function TagPage({ params, searchParams }: Props) {
 
       <header className="tag-header">
         <h1 className="page-title">#{tag.name}</h1>
-        <span className="category-count">{total} article{total === 1 ? "" : "s"}</span>
+
       </header>
 
       {articles.length === 0 ? (

@@ -16,6 +16,7 @@ import crypto from "crypto";
 import sharp from "sharp";
 import sanitizeHtml from "sanitize-html";
 import { stripLeadingImages, stripAgencyArtifacts } from "../lib/content-helpers";
+import "../lib/models"; // registers all Mongoose schemas before mongoose.model() is used
 
 // --- Types ----------------------------------------------------------------
 

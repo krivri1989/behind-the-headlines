@@ -3,7 +3,7 @@
 import {
   Bell, ChevronDown, CircleHelp, FileText, FolderTree, LayoutDashboard,
   LogOut, Menu, MessageSquare, MoreHorizontal, Newspaper, Plus, Radio, Search, Settings, Tags, Users,
-  Activity,
+  Activity, RefreshCw, Languages,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -35,7 +35,10 @@ const adminNavigation = [
   { label: "Categories", icon: FolderTree, href: "/dashboard/categories" },
   { label: "Tags", icon: Tags, href: "/dashboard/tags" },
   { label: "Menus", icon: Menu, href: "/dashboard/menus" },
+  { label: "Pages", icon: FileText, href: "/dashboard/pages" },
   { label: "RSS sources", icon: Radio, href: "/dashboard/rss-sources" },
+  { label: "Recover", icon: RefreshCw, href: "/dashboard/recover" },
+  { label: "Hindi", icon: Languages, href: "/dashboard/hindi" },
   { label: "Editors", icon: Users, href: "/dashboard/editors" },
   { label: "Subscribers", icon: Users, href: "/dashboard/subscribers" },
   { label: "Comments", icon: MessageSquare, href: "/dashboard/comments" },

@@ -44,7 +44,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <header className="category-header">
         <h1 className="category-title">{category.name}</h1>
         {category.description && <p className="category-description">{category.description}</p>}
-        <span className="category-count">{total} article{total === 1 ? "" : "s"}</span>
+
       </header>
 
       {articles.length === 0 ? (

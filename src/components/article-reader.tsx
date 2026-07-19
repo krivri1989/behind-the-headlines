@@ -4,20 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { stripLeadingImages, stripAgencyArtifacts } from "@/lib/content-helpers";
 import { ArticleComments } from "./article-comments";
+import { useSiteSettings } from "@/components/site-settings-provider";
 import type { PublicArticle } from "@/lib/public-data";
-
-export function useImageFallback() {
-  const [error, setError] = useState(false);
-  return { error, onError: () => setError(true) };
-}
 
 function cleanContent(html: string): string {
   return stripAgencyArtifacts(stripLeadingImages(html));
 }
 
-function FeaturedImage({ image, title }: { image: PublicArticle["featuredImage"]; title: string }) {
-  const { error, onError } = useImageFallback();
-  if (!image || error) return <div className="article-fallback-image" />;
+function FeaturedImage({ image, title, fallback }: { image: PublicArticle["featuredImage"]; title: string; fallback?: string }) {
+  const [srcsetFailed, setSrcsetFailed] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
+  if (!image) return <div className="article-fallback-image" />;
+
+  // Primary image (or variants) failed — fall back to the default image if available.
+  if (srcsetFailed || imgFailed) {
+    if (fallback && fallback !== image.url && !imgFailed) {
+      return <img src={fallback} alt={image.alt || title} onError={() => setImgFailed(true)} />;
+    }
+    return <div className="article-fallback-image" />;
+  }
+
   const webp = image.variants.filter((v) => v.format === "webp");
   const avif = image.variants.filter((v) => v.format === "avif");
   const srcsetWebp = webp.map((v) => v.url + " " + v.width + "w").join(", ");
@@ -26,14 +32,26 @@ function FeaturedImage({ image, title }: { image: PublicArticle["featuredImage"]
     <picture>
       {srcsetAvif && <source type="image/avif" srcSet={srcsetAvif} sizes="(max-width: 768px) 100vw, 820px" />}
       {srcsetWebp && <source type="image/webp" srcSet={srcsetWebp} sizes="(max-width: 768px) 100vw, 820px" />}
-      <img src={image.url} alt={image.alt || title} width={image.width || 820} height={image.height || 460} onError={onError} />
+      <img src={image.url} alt={image.alt || title} width={image.width || 820} height={image.height || 460} onError={() => setSrcsetFailed(true)} />
     </picture>
   );
 }
 
 function ArticleBody({ article }: { article: PublicArticle }) {
+  const { defaultImageUrl } = useSiteSettings();
   const primary = article.categories[0];
   const date = new Date(article.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  const imageToUse: PublicArticle["featuredImage"] = article.featuredImage || (defaultImageUrl
+    ? {
+        url: defaultImageUrl,
+        alt: article.title,
+        caption: "",
+        credit: "",
+        width: 0,
+        height: 0,
+        variants: [],
+      }
+    : null);
   return (
     <article className="reader-article" data-article-id={article.id}>
       <header className="article-header">
@@ -46,13 +64,13 @@ function ArticleBody({ article }: { article: PublicArticle }) {
         </div>
       </header>
 
-      {article.featuredImage && (
+      {imageToUse && (
         <figure className="article-featured-image">
-          <FeaturedImage image={article.featuredImage} title={article.title} />
-          {(article.featuredImage.caption || article.featuredImage.credit) && (
+          <FeaturedImage image={imageToUse} title={article.title} fallback={defaultImageUrl} />
+          {(imageToUse.caption || imageToUse.credit) && (
             <figcaption className="article-image-caption">
-              {article.featuredImage.caption && <span>{article.featuredImage.caption}</span>}
-              {article.featuredImage.credit && <span className="article-image-credit">{article.featuredImage.credit}</span>}
+              {imageToUse.caption && <span>{imageToUse.caption}</span>}
+              {imageToUse.credit && <span className="article-image-credit">{imageToUse.credit}</span>}
             </figcaption>
           )}
         </figure>
