@@ -23,6 +23,17 @@ type FetchAllResult = {
   summary: { totalSources: number; totalImported: number; totalSkipped: number; failedCount: number };
 };
 
+type RssImport = {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  status: "success" | "partial" | "failed";
+  importedCount: number;
+  skippedCount: number;
+  error?: string;
+  createdAt: string;
+};
+
 const INTERVAL_OPTIONS = [{ value: 15, label: "Every 15 minutes" }, { value: 30, label: "Every 30 minutes" }, { value: 45, label: "Every 45 minutes" }, { value: 60, label: "Every 1 hour" }, { value: 120, label: "Every 2 hours" }, { value: 180, label: "Every 3 hours" }, { value: 300, label: "Every 5 hours" }, { value: 600, label: "Every 10 hours" }, { value: 1440, label: "Every 1 day" }];
 
 function healthFor(source: RssSource) {
@@ -62,6 +73,8 @@ export default function RssSourcesPage() {
   const [fetchingAll, setFetchingAll] = useState(false);
   const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
   const [fetchAllSummary, setFetchAllSummary] = useState<FetchAllResult["summary"] | null>(null);
+  const [history, setHistory] = useState<RssImport[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   async function refreshSources() {
     try {
@@ -70,11 +83,21 @@ export default function RssSourcesPage() {
     } catch { /* ignore */ }
   }
 
+  async function loadHistory() {
+    setHistoryLoading(true);
+    try {
+      const rows = await apiFetch<RssImport[]>("/api/rss-imports?limit=50");
+      setHistory(rows);
+    } catch { /* ignore */ }
+    finally { setHistoryLoading(false); }
+  }
+
   useEffect(() => {
     Promise.all([apiFetch<RssSource[]>("/api/rss-sources"), apiFetch<Category[]>("/api/categories")])
       .then(([srcs, cats]) => { setSources(srcs); setCategories(cats); if (cats[0]) setCategoryId(cats[0].id); })
       .catch(() => {})
       .finally(() => setLoading(false));
+    loadHistory();
   }, []);
 
   const activeCount = useMemo(() => sources.filter((s) => s.active && !s.lastError).length, [sources]);
@@ -146,6 +169,7 @@ export default function RssSourcesPage() {
       const result = await apiFetch<ImportResult>(`/api/rss-sources/${source.id}/fetch`, { method: "POST" });
       setImportResults([result]);
       await refreshSources();
+      await loadHistory();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to fetch source");
     } finally {
@@ -162,6 +186,7 @@ export default function RssSourcesPage() {
       setImportResults(result.results);
       setFetchAllSummary(result.summary);
       await refreshSources();
+      await loadHistory();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to fetch all sources");
     } finally {
@@ -272,6 +297,29 @@ export default function RssSourcesPage() {
           ))}
         </section>
       )}
+
+      <section className="workspace-panel import-history-panel">
+        <div className="panel-heading"><div><h2>Import history</h2><p>Recent RSS fetches, stored, skipped, and failed.</p></div></div>
+        {historyLoading ? <div className="empty-state">Loading history…</div> : history.length === 0 ? <div className="empty-state">No import history yet.</div> : (
+          <table className="import-history-table">
+            <thead>
+              <tr><th>Time</th><th>Source</th><th>Status</th><th>Stored</th><th>Ignored</th><th>Error</th></tr>
+            </thead>
+            <tbody>
+              {history.map((row) => (
+                <tr key={row.id}>
+                  <td>{new Date(row.createdAt).toLocaleString()}</td>
+                  <td>{row.sourceName}</td>
+                  <td><span className={`import-status ${row.status}`}>{row.status}</span></td>
+                  <td>{row.importedCount}</td>
+                  <td>{row.skippedCount}</td>
+                  <td>{row.error ? <span className="source-error" title={row.error}>{row.error.slice(0, 60)}{row.error.length > 60 ? "…" : ""}</span> : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       {(previewSource || previewLoading || previewError || previewItems.length > 0) && (
         <section className="workspace-panel preview-results-panel">

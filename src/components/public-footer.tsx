@@ -85,6 +85,7 @@ export function PublicFooter({
   const publicationName = (settings?.publicationName as string) || "Behind The Headlines";
   const tagline = (settings?.tagline as string) || "";
   const contactEmail = (settings?.contactEmail as string) || "";
+  const logoUrl = (settings?.logoUrl as string) || "";
 
   return (
     <footer className="public-footer">
@@ -97,7 +98,11 @@ export function PublicFooter({
         {/* Footer columns */}
         <div className="footer-columns">
           <div className="footer-col footer-col-wide">
-            <h4>{publicationName}</h4>
+            {logoUrl ? (
+              <img src={logoUrl} alt={publicationName} className="footer-logo" />
+            ) : (
+              <h4>{publicationName}</h4>
+            )}
             <p>{tagline || "Independent reporting, analysis, and stories that matter."}</p>
             {contactEmail && <p className="footer-contact"><Mail size={14} /> {contactEmail}</p>}
           </div>

@@ -46,10 +46,25 @@ function Picture({ image, alt, sizes }: { image: PublicArticle["featuredImage"];
   );
 }
 
-export function ArticleCard({ article, variant = "default" }: { article: PublicArticle; variant?: "default" | "lead" | "horizontal" | "compact" | "text" }) {
+export function ArticleCard({ article, variant = "default" }: { article: PublicArticle; variant?: "default" | "lead" | "horizontal" | "compact" | "text" | "image-title" }) {
   const href = "/article/" + article.slug;
   const category = article.categories[0];
   const img = article.featuredImage;
+
+  if (variant === "image-title") {
+    return (
+      <article className="article-card default image-title-only">
+        <Link href={href} className="article-card-img-wrap">
+          <Picture image={img} alt={img?.alt || article.title} sizes="(max-width: 768px) 100vw, 300px" />
+        </Link>
+        <div className="article-card-body">
+          <Link href={href}>
+            <h3 className="article-card-title">{article.title}</h3>
+          </Link>
+        </div>
+      </article>
+    );
+  }
 
   if (variant === "text") {
     return (
@@ -58,7 +73,7 @@ export function ArticleCard({ article, variant = "default" }: { article: PublicA
         <Link href={href}>
           <h3 className="article-card-title">{article.title}</h3>
         </Link>
-        <span className="article-card-time">{timeAgo(article.publishedAt)}</span>
+        <span className="article-card-time" suppressHydrationWarning>{timeAgo(article.publishedAt)}</span>
       </article>
     );
   }
@@ -75,7 +90,7 @@ export function ArticleCard({ article, variant = "default" }: { article: PublicA
           <Link href={href}>
             <h3 className="article-card-title">{article.title}</h3>
           </Link>
-          <span className="article-card-time">{timeAgo(article.publishedAt)}</span>
+          <span className="article-card-time" suppressHydrationWarning>{timeAgo(article.publishedAt)}</span>
         </div>
       </article>
     );
@@ -93,7 +108,7 @@ export function ArticleCard({ article, variant = "default" }: { article: PublicA
             <h3 className="article-card-title">{article.title}</h3>
           </Link>
           {article.excerpt && <p className="article-card-excerpt">{article.excerpt}</p>}
-          <span className="article-card-time">{timeAgo(article.publishedAt)}</span>
+          <span className="article-card-time" suppressHydrationWarning>{timeAgo(article.publishedAt)}</span>
         </div>
       </article>
     );
@@ -113,7 +128,7 @@ export function ArticleCard({ article, variant = "default" }: { article: PublicA
           {article.excerpt && <p className="article-card-excerpt">{article.excerpt}</p>}
           <div className="article-card-meta">
             <span>By {article.author.name}</span>
-            <span className="article-card-time">{timeAgo(article.publishedAt)}</span>
+            <span className="article-card-time" suppressHydrationWarning>{timeAgo(article.publishedAt)}</span>
           </div>
         </div>
       </article>
@@ -132,7 +147,7 @@ export function ArticleCard({ article, variant = "default" }: { article: PublicA
           <h3 className="article-card-title">{article.title}</h3>
         </Link>
         {article.excerpt && <p className="article-card-excerpt">{article.excerpt}</p>}
-        <span className="article-card-time">{timeAgo(article.publishedAt)}</span>
+        <span className="article-card-time" suppressHydrationWarning>{timeAgo(article.publishedAt)}</span>
       </div>
     </article>
   );

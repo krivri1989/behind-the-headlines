@@ -83,13 +83,32 @@ function toPublicArticle(a: Record<string, unknown>): PublicArticle {
 
 // --- Public Queries --------------------------------------------------------
 
-export async function getSiteSettingsPublic(): Promise<Record<string, unknown> | null> {
+const defaultSiteSettings: Record<string, unknown> = {
+  publicationName: "Behind The Headlines",
+  tagline: "Independent reporting, analysis, and stories that matter.",
+  language: "English",
+  timezone: "Asia/Kolkata",
+  contactEmail: "",
+  seoTitle: "Behind The Headlines | Independent News",
+  metaDescription: "Independent reporting, analysis, and stories that matter.",
+  keywords: "news, india, business, technology, world",
+  canonicalHost: "",
+  primaryColor: "#4b2739",
+  primaryTextColor: "#ffffff",
+  accentColor: "#bd8b32",
+  accentTextColor: "#ffffff",
+  footerColor: "#1a1a1a",
+  footerTextColor: "#ffffff",
+  logoUrl: "https://media.behindtheheadlines.in/behind-the-headlines-media/media/1784439072427-auz5ye.jpg",
+  faviconUrl: "",
+};
+
+export async function getSiteSettingsPublic(): Promise<Record<string, unknown>> {
   const cached = await cacheGet<Record<string, unknown>>("cache:public:settings");
   if (cached) return cached;
   await connectToDatabase();
   const settings = await SiteSettings.findOne().lean() as Record<string, unknown> | null;
-  if (!settings) return null;
-  const result = { ...settings, id: String(settings._id) } as Record<string, unknown>;
+  const result = { ...defaultSiteSettings, ...settings, id: settings ? String(settings._id) : "default" } as Record<string, unknown>;
   delete result._id;
   delete result.__v;
   await cacheSet("cache:public:settings", result, 600);
@@ -297,6 +316,25 @@ export async function getNextArticle(articleId: string, categoryIds: string[]): 
     .populate("tagIds", "name slug")
     .lean() as unknown as Record<string, unknown> | null;
   return nextArticle ? toPublicArticle(nextArticle) : null;
+}
+
+export async function getPreviousArticle(articleId: string, categoryIds: string[]): Promise<PublicArticle | null> {
+  await connectToDatabase();
+  const article = await Article.findById(articleId).lean() as unknown as Record<string, unknown> | null;
+  if (!article) return null;
+  const publishedAt = article.publishedAt as string | Date;
+  const prevArticle = await Article.findOne({
+    status: "published",
+    _id: { $ne: articleId },
+    categoryIds: { $in: categoryIds },
+    publishedAt: { $gt: new Date(publishedAt) },
+  })
+    .sort({ publishedAt: 1 })
+    .populate("authorId", "name")
+    .populate("categoryIds", "name slug")
+    .populate("tagIds", "name slug")
+    .lean() as unknown as Record<string, unknown> | null;
+  return prevArticle ? toPublicArticle(prevArticle) : null;
 }
 
 export async function getTrendingArticles(limit = 10): Promise<PublicArticle[]> {

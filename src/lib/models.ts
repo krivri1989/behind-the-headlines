@@ -84,7 +84,11 @@ const siteSettingsSchema = new Schema({
   keywords: { type: String, default: "" },
   canonicalHost: { type: String, default: "" },
   primaryColor: { type: String, default: "#4b2739" },
+  primaryTextColor: { type: String, default: "#ffffff" },
   accentColor: { type: String, default: "#bd8b32" },
+  accentTextColor: { type: String, default: "#ffffff" },
+  footerColor: { type: String, default: "#1a1a1a" },
+  footerTextColor: { type: String, default: "#ffffff" },
   logoUrl: { type: String, default: "" },
   faviconUrl: { type: String, default: "" },
   rssDefaultAuthor: { type: String, default: "RSS Feed" },
@@ -95,3 +99,12 @@ const siteSettingsSchema = new Schema({
   adPlacements: [adPlacementSchema],
 }, { timestamps: true });
 export const SiteSettings = models.SiteSettings ?? model("SiteSettings", siteSettingsSchema);
+
+const commentSchema = new Schema({
+  articleId: { type: Schema.Types.ObjectId, ref: "Article", required: true, index: true },
+  authorName: { type: String, required: true },
+  authorEmail: { type: String, required: true },
+  content: { type: String, required: true, maxlength: 2000 },
+  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending", index: true },
+}, { timestamps: true });
+export const Comment = models.Comment ?? model("Comment", commentSchema);

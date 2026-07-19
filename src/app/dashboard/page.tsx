@@ -2,7 +2,7 @@
 
 import {
   Bell, ChevronDown, CircleHelp, FileText, FolderTree, LayoutDashboard,
-  LogOut, Menu, MoreHorizontal, Newspaper, Plus, Radio, Search, Settings, Tags, Users,
+  LogOut, Menu, MessageSquare, MoreHorizontal, Newspaper, Plus, Radio, Search, Settings, Tags, Users,
   Activity,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
@@ -20,6 +20,14 @@ type WorkerStatus = {
   queue: { pending: number; processing: number; delayed: number };
 };
 
+type DashboardStats = {
+  articles: { total: number; published: number; draft: number; archived: number };
+  rssSources: { total: number; active: number; errors: number };
+  subscribers: { total: number; subscribed: number };
+  editors: number;
+  categories: number;
+};
+
 const adminNavigation = [
   { label: "Overview", icon: LayoutDashboard, active: true },
   { label: "Articles", icon: Newspaper, href: "/dashboard/articles" },
@@ -30,6 +38,7 @@ const adminNavigation = [
   { label: "RSS sources", icon: Radio, href: "/dashboard/rss-sources" },
   { label: "Editors", icon: Users, href: "/dashboard/editors" },
   { label: "Subscribers", icon: Users, href: "/dashboard/subscribers" },
+  { label: "Comments", icon: MessageSquare, href: "/dashboard/comments" },
   { label: "Audit logs", icon: FileText, href: "/dashboard/audit-logs" },
 ];
 
@@ -47,6 +56,7 @@ export default function DashboardPage() {
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState<Article[]>([]);
   const [worker, setWorker] = useState<WorkerStatus | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
     apiFetch<{ user: SessionUser | null }>("/api/auth/session")
@@ -54,9 +64,12 @@ export default function DashboardPage() {
         if (!data.user) { router.replace("/login"); return; }
         setUser(data.user);
         setLoading(false);
-        return apiFetch<{ articles: Article[] }>("/api/articles?limit=10");
+        return Promise.all([
+          apiFetch<{ articles: Article[] }>("/api/articles?limit=10"),
+          apiFetch<DashboardStats>("/api/dashboard/stats"),
+        ]);
       })
-      .then((data) => { if (data) setArticles(data.articles); })
+      .then((data) => { if (data) { setArticles(data[0].articles); setStats(data[1]); } })
       .catch(() => { router.replace("/login"); });
   }, [router]);
 
@@ -125,10 +138,10 @@ export default function DashboardPage() {
           </section>
 
           <section className="metrics" aria-label="Newsroom metrics">
-            <article className="metric-card"><span className="metric-icon plum"><Newspaper size={20} /></span><p>Published articles</p><strong>{articles.filter((a) => a.status === "published").length}</strong><small>Loaded from database</small></article>
-            <article className="metric-card"><span className="metric-icon gold"><Users size={20} /></span><p>Total articles</p><strong>{articles.length}</strong><small>All statuses</small></article>
-            <article className="metric-card"><span className="metric-icon blue"><Radio size={20} /></span><p>RSS sources</p><strong>—</strong><small>Configure in RSS sources</small></article>
-            <article className="metric-card"><span className="metric-icon green"><FileText size={20} /></span><p>Drafts</p><strong>{articles.filter((a) => a.status === "draft").length}</strong><small>In progress</small></article>
+            <article className="metric-card"><span className="metric-icon plum"><Newspaper size={20} /></span><p>Published articles</p><strong>{stats?.articles.published ?? "—"}</strong><small>Loaded from database</small></article>
+            <article className="metric-card"><span className="metric-icon gold"><Users size={20} /></span><p>Total articles</p><strong>{stats?.articles.total ?? "—"}</strong><small>All statuses</small></article>
+            <article className="metric-card"><span className="metric-icon blue"><Radio size={20} /></span><p>RSS sources</p><strong>{stats?.rssSources.total ?? "—"}</strong><small>{stats ? `${stats.rssSources.active} active` : "Configure in RSS sources"}</small></article>
+            <article className="metric-card"><span className="metric-icon green"><FileText size={20} /></span><p>Drafts</p><strong>{stats?.articles.draft ?? "—"}</strong><small>In progress</small></article>
           </section>
 
           <section className="dashboard-grid">
@@ -155,7 +168,7 @@ export default function DashboardPage() {
               {!isEditor && worker && (
                 <article className="panel">
                   <div className="panel-heading">
-                    <div><h2>Worker status</h2><p>RSS background importer</p></div>
+                    <div><h2>Worker status (CRON Job)</h2><p>RSS background importer</p></div>
                     <span className={`source-status ${worker.status === "running" ? "good" : "error"}`}>
                       {worker.status === "running" ? "Running" : "Stopped"}
                     </span>

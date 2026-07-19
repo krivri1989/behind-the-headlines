@@ -26,7 +26,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { page: pageStr } = await searchParams;
   const page = Number(pageStr) || 1;
-  const result = await getCategoryArticles(slug, page, 20);
+  const settings = await getSiteSettingsPublic();
+  const pageSize = Number(settings?.articlePageSize) || 24;
+  const result = await getCategoryArticles(slug, page, pageSize);
   if (!result.category) notFound();
 
   const { category, articles, total, totalPages } = result;

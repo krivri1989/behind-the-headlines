@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { connectToDatabase } from "./db";
-import { Article, RssSource, RssImport, User, Media } from "./models";
+import { Article, RssSource, RssImport, User, Media, SiteSettings } from "./models";
 import { uploadFile, isStorageConfigured, getObjectUrl } from "./storage";
 import { invalidateArticleCache } from "./redis";
 import { createAuditLog } from "./data";
@@ -154,22 +154,22 @@ async function downloadImage(imageUrl: string, altText: string, uploadedById: st
   }
 }
 
-async function findDuplicate(source: { guid: string; link: string; title: string; content: string }): Promise<boolean> {
-  // Check by GUID + source name
+async function findDuplicate(source: { guid: string; link: string; title: string; content: string }): Promise<{ _id: unknown; categoryIds: unknown[] } | null> {
+  // Check by GUID
   if (source.guid) {
-    const byGuid = await Article.findOne({ rssGuid: source.guid }).lean();
-    if (byGuid) return true;
+    const byGuid = await Article.findOne({ rssGuid: source.guid }).lean() as unknown as { _id: unknown; categoryIds?: unknown[] } | null;
+    if (byGuid) return { _id: byGuid._id, categoryIds: (byGuid.categoryIds || []) as unknown[] };
   }
   // Check by source URL
   if (source.link) {
-    const byUrl = await Article.findOne({ sourceUrl: source.link }).lean();
-    if (byUrl) return true;
+    const byUrl = await Article.findOne({ sourceUrl: source.link }).lean() as unknown as { _id: unknown; categoryIds?: unknown[] } | null;
+    if (byUrl) return { _id: byUrl._id, categoryIds: (byUrl.categoryIds || []) as unknown[] };
   }
   // Check by content hash
   const hash = contentHash(source.title, source.content);
-  const byHash = await Article.findOne({ contentHash: hash }).lean();
-  if (byHash) return true;
-  return false;
+  const byHash = await Article.findOne({ contentHash: hash }).lean() as unknown as { _id: unknown; categoryIds?: unknown[] } | null;
+  if (byHash) return { _id: byHash._id, categoryIds: (byHash.categoryIds || []) as unknown[] };
+  return null;
 }
 
 export async function importRssSource(sourceId: string, actorId?: string): Promise<ImportResult> {
@@ -190,23 +190,41 @@ export async function importRssSource(sourceId: string, actorId?: string): Promi
   try {
     const { items } = await fetchFeed(source.feedUrl);
 
+    // Get the configured RSS default author name from settings
+    const settings = await SiteSettings.findOne().lean() as unknown as { rssDefaultAuthor?: string } | null;
+    const authorName = (settings?.rssDefaultAuthor as string) || "RSS Feed";
+
     // Find or create a system user for RSS articles
     let systemUser = await User.findOne({ email: "rss-system@behind-the-headlines.local" });
     if (!systemUser) {
       systemUser = await User.create({
-        name: "RSS System",
+        name: authorName,
         email: "rss-system@behind-the-headlines.local",
         passwordHash: crypto.randomBytes(32).toString("hex"),
         role: "editor",
         active: false,
       });
+    } else if (systemUser.name !== authorName) {
+      // Update the name if the setting has changed
+      systemUser.name = authorName;
+      await systemUser.save();
     }
 
     for (const item of items) {
       // Deduplication check
-      const exists = await findDuplicate({ guid: item.guid, link: item.link, title: item.title, content: item.content });
-      if (exists) {
-        result.skippedCount++;
+      const existing = await findDuplicate({ guid: item.guid, link: item.link, title: item.title, content: item.content });
+      if (existing) {
+        // If the existing article doesn't already have this source's category,
+        // add it so the article appears in the correct category section.
+        const existingCatIds = (existing.categoryIds || []).map(String);
+        if (!existingCatIds.includes(String(source.categoryId))) {
+          await Article.findByIdAndUpdate(existing._id, {
+            $addToSet: { categoryIds: source.categoryId },
+          });
+          result.importedCount++;
+        } else {
+          result.skippedCount++;
+        }
         continue;
       }
 

@@ -301,6 +301,58 @@ export async function getEditors() {
   }));
 }
 
+export async function getDashboardStats(options: { authorId?: string } = {}) {
+  await connectToDatabase();
+  const articleFilter: Record<string, unknown> = {};
+  if (options.authorId) articleFilter.authorId = options.authorId;
+
+  const [
+    totalArticles,
+    publishedArticles,
+    draftArticles,
+    archivedArticles,
+    totalRssSources,
+    activeRssSources,
+    rssSourcesWithErrors,
+    totalSubscribers,
+    subscribedSubscribers,
+    totalEditors,
+    totalCategories,
+  ] = await Promise.all([
+    Article.countDocuments(articleFilter),
+    Article.countDocuments({ ...articleFilter, status: "published" }),
+    Article.countDocuments({ ...articleFilter, status: "draft" }),
+    Article.countDocuments({ ...articleFilter, status: "archived" }),
+    RssSource.countDocuments(),
+    RssSource.countDocuments({ active: true }),
+    RssSource.countDocuments({ active: true, lastError: { $ne: null } }),
+    Subscriber.countDocuments(),
+    Subscriber.countDocuments({ status: "subscribed" }),
+    User.countDocuments(),
+    Category.countDocuments(),
+  ]);
+
+  return {
+    articles: {
+      total: totalArticles,
+      published: publishedArticles,
+      draft: draftArticles,
+      archived: archivedArticles,
+    },
+    rssSources: {
+      total: totalRssSources,
+      active: activeRssSources,
+      errors: rssSourcesWithErrors,
+    },
+    subscribers: {
+      total: totalSubscribers,
+      subscribed: subscribedSubscribers,
+    },
+    editors: totalEditors,
+    categories: totalCategories,
+  };
+}
+
 export async function createEditor(input: { name: string; email: string; role: "admin" | "editor" }) {
   await connectToDatabase();
   const passwordHash = await import("bcryptjs").then((b) => b.hash(crypto.randomUUID().slice(0, 16), 12));
@@ -465,11 +517,34 @@ export async function updateSiteSettings(input: Record<string, unknown>) {
   return toObject(settings);
 }
 
-export async function getRssImports(options: { sourceId?: string; limit?: number } = {}) {
+type RssImportItem = {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  status: string;
+  importedCount: number;
+  skippedCount: number;
+  error?: string;
+  createdAt: string;
+};
+
+export async function getRssImports(options: { sourceId?: string; limit?: number } = {}): Promise<RssImportItem[]> {
   await connectToDatabase();
   const filter: Record<string, unknown> = {};
   if (options.sourceId) filter.sourceId = options.sourceId;
-  const limit = options.limit ?? 20;
-  const imports = await RssImport.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
-  return imports.map((i) => ({ ...i, id: String(i._id) }));
+  const limit = options.limit ?? 50;
+  const imports = await RssImport.find(filter).sort({ createdAt: -1 }).limit(limit).populate("sourceId", "name").lean() as Array<Record<string, unknown>>;
+  return imports.map((i) => {
+    const source = (i.sourceId as { name?: string } | null) ?? {};
+    return {
+      id: String(i._id),
+      sourceId: typeof i.sourceId === "string" ? i.sourceId : String((i.sourceId as { _id: unknown } | null)?._id ?? ""),
+      sourceName: source.name ?? "Unknown source",
+      status: String(i.status ?? ""),
+      importedCount: Number(i.importedCount ?? 0),
+      skippedCount: Number(i.skippedCount ?? 0),
+      error: i.error ? String(i.error) : undefined,
+      createdAt: i.createdAt ? new Date(i.createdAt as string).toISOString() : new Date().toISOString(),
+    };
+  });
 }

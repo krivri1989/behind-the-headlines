@@ -6,25 +6,32 @@ import { apiFetch } from "@/lib/api-client";
 
 type MenuItem = { label: string; href: string; order: number; visible: boolean };
 type MenuData = { id: string; location: "header" | "footer"; items: MenuItem[] };
+type Category = { id: string; name: string; slug: string; visible: boolean };
 
 export default function MenusPage() {
   const [location, setLocation] = useState<"header" | "footer">("header");
   const [header, setHeader] = useState<MenuItem[]>([]);
   const [footer, setFooter] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dragged, setDragged] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [label, setLabel] = useState("");
   const [href, setHref] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    apiFetch<MenuData[]>("/api/menus")
-      .then((menus) => {
+    Promise.all([
+      apiFetch<MenuData[]>("/api/menus"),
+      apiFetch<Category[]>("/api/categories"),
+    ])
+      .then(([menus, cats]) => {
         const h = menus.find((m) => m.location === "header");
         const f = menus.find((m) => m.location === "footer");
         if (h) setHeader(h.items);
         if (f) setFooter(f.items);
+        setCategories(cats.filter((c) => c.visible));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -91,6 +98,14 @@ export default function MenusPage() {
     setShowForm(false);
   };
 
+  const addCategory = () => {
+    const category = categories.find((c) => c.id === selectedCategory);
+    if (!category) return;
+    const item: MenuItem = { label: category.name, href: `/category/${category.slug}`, order: items.length, visible: true };
+    addToSelected(item);
+    setSelectedCategory("");
+  };
+
   const allItems = [...header, ...footer];
 
   return (
@@ -107,6 +122,24 @@ export default function MenusPage() {
           <label>URL or path<input value={href} onChange={(event) => setHref(event.target.value)} placeholder="e.g. /careers" required /></label>
           <button className="primary-button" type="submit">Save menu item</button>
         </form>
+      )}
+
+      {categories.length > 0 && (
+        <div className="workspace-panel menu-category-panel">
+          <div className="panel-heading"><div><h2>Add category to menu</h2><p>Quickly add a category page to the {location} menu.</p></div></div>
+          <div className="menu-category-add">
+            <label>
+              Category
+              <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
+                <option value="">Select a category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </label>
+            <button className="primary-button" type="button" onClick={addCategory} disabled={!selectedCategory}>Add to {location}</button>
+          </div>
+        </div>
       )}
 
       <section className="menu-manager">

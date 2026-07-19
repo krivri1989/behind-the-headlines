@@ -1,4 +1,4 @@
-import { searchArticles } from "@/lib/public-data";
+import { searchArticles, getSiteSettingsPublic } from "@/lib/public-data";
 import { ArticleCard } from "@/components/article-card";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -18,7 +18,9 @@ export default async function SearchPage({ searchParams }: Props) {
   const { q, page: pageStr } = await searchParams;
   const query = q || "";
   const page = Number(pageStr) || 1;
-  const result = await searchArticles(query, page, 20);
+  const settings = await getSiteSettingsPublic();
+  const pageSize = Number(settings?.articlePageSize) || 24;
+  const result = await searchArticles(query, page, pageSize);
 
   return (
     <div className="search-page">

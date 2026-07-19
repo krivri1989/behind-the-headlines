@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2, Globe2, ImageIcon, Loader2, Megaphone, Palette, Save, Settings2, Shield } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CheckCircle2, Globe2, ImageIcon, Loader2, Megaphone, Palette, RotateCcw, Save, Settings2, Shield, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 
 type Tab = "general" | "seo" | "branding" | "advanced" | "advertising";
@@ -36,10 +36,23 @@ export default function SettingsPage() {
 
   const [branding, setBranding] = useState({
     primaryColor: "#4b2739",
+    primaryTextColor: "#ffffff",
     accentColor: "#bd8b32",
+    accentTextColor: "#ffffff",
+    footerColor: "#1a1a1a",
+    footerTextColor: "#ffffff",
     logoUrl: "",
     faviconUrl: "",
   });
+
+  const BRAND_DEFAULTS = {
+    primaryColor: "#4b2739",
+    primaryTextColor: "#ffffff",
+    accentColor: "#bd8b32",
+    accentTextColor: "#ffffff",
+    footerColor: "#1a1a1a",
+    footerTextColor: "#ffffff",
+  };
 
   const [advanced, setAdvanced] = useState({
     rssDefaultAuthor: "RSS Feed",
@@ -58,13 +71,43 @@ export default function SettingsPage() {
   });
 
   const [auditPreview, setAuditPreview] = useState<string[]>([]);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const faviconInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function uploadBrandingImage(file: File, field: "logoUrl" | "faviconUrl") {
+    const setUploading = field === "logoUrl" ? setUploadingLogo : setUploadingFavicon;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/media", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setBranding((b) => ({ ...b, [field]: data.url }));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to upload image");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   useEffect(() => {
     apiFetch<Record<string, unknown>>("/api/settings")
       .then((data) => {
         if (data.publicationName) setGeneral((g) => ({ ...g, publicationName: data.publicationName as string, tagline: (data.tagline as string) || g.tagline, language: (data.language as string) || g.language, timezone: (data.timezone as string) || g.timezone, contactEmail: (data.contactEmail as string) || "" }));
         if (data.seoTitle !== undefined) setSeo({ seoTitle: (data.seoTitle as string) || "", metaDescription: (data.metaDescription as string) || "", keywords: (data.keywords as string) || "", canonicalHost: (data.canonicalHost as string) || "" });
-        if (data.primaryColor) setBranding({ primaryColor: (data.primaryColor as string) || "#4b2739", accentColor: (data.accentColor as string) || "#bd8b32", logoUrl: (data.logoUrl as string) || "", faviconUrl: (data.faviconUrl as string) || "" });
+        if (data.primaryColor) setBranding({
+          primaryColor: (data.primaryColor as string) || "#4b2739",
+          primaryTextColor: (data.primaryTextColor as string) || "#ffffff",
+          accentColor: (data.accentColor as string) || "#bd8b32",
+          accentTextColor: (data.accentTextColor as string) || "#ffffff",
+          footerColor: (data.footerColor as string) || "#1a1a1a",
+          footerTextColor: (data.footerTextColor as string) || "#ffffff",
+          logoUrl: (data.logoUrl as string) || "",
+          faviconUrl: (data.faviconUrl as string) || "",
+        });
         if (data.rssDefaultAuthor !== undefined) setAdvanced({ rssDefaultAuthor: (data.rssDefaultAuthor as string) || "RSS Feed", articlePageSize: String(data.articlePageSize ?? 24), enableComments: Boolean(data.enableComments), cookieConsent: Boolean(data.cookieConsent) });
         if (Array.isArray(data.adPlacements)) {
           const placements = data.adPlacements as Array<{ location: string; enabled: boolean; allowlist: string; scriptUrl: string }>;
@@ -132,7 +175,11 @@ export default function SettingsPage() {
       keywords: seo.keywords,
       canonicalHost: seo.canonicalHost,
       primaryColor: branding.primaryColor,
+      primaryTextColor: branding.primaryTextColor,
       accentColor: branding.accentColor,
+      accentTextColor: branding.accentTextColor,
+      footerColor: branding.footerColor,
+      footerTextColor: branding.footerTextColor,
       logoUrl: branding.logoUrl,
       faviconUrl: branding.faviconUrl,
       rssDefaultAuthor: advanced.rssDefaultAuthor,
@@ -251,37 +298,119 @@ export default function SettingsPage() {
 
       {tab === "branding" && (
         <section className="workspace-panel settings-panel">
-          <div className="panel-heading"><div><h2>Branding</h2><p>Colors and visual assets. Uploads will be enabled when media storage is connected.</p></div></div>
+          <div className="panel-heading"><div><h2>Branding</h2><p>Customize the colors shown on the public website. Each section lets you set both a background and a text color so text stays readable.</p></div></div>
           <div className="settings-grid">
             <label>
-              Primary brand color
+              Header bar — background
               <div className="color-field">
                 <input type="color" value={branding.primaryColor} onChange={(event) => setBranding({ ...branding, primaryColor: event.target.value })} />
                 <input value={branding.primaryColor} onChange={(event) => setBranding({ ...branding, primaryColor: event.target.value })} />
+                {branding.primaryColor !== BRAND_DEFAULTS.primaryColor && (
+                  <button type="button" className="color-reset" title="Reset to default" onClick={() => setBranding({ ...branding, primaryColor: BRAND_DEFAULTS.primaryColor })}><RotateCcw size={14} /></button>
+                )}
               </div>
+              <small className="color-hint">Top header strip (edition, date, weather, social icons)</small>
             </label>
             <label>
-              Accent color
+              Header bar — text color
+              <div className="color-field">
+                <input type="color" value={branding.primaryTextColor} onChange={(event) => setBranding({ ...branding, primaryTextColor: event.target.value })} />
+                <input value={branding.primaryTextColor} onChange={(event) => setBranding({ ...branding, primaryTextColor: event.target.value })} />
+                {branding.primaryTextColor !== BRAND_DEFAULTS.primaryTextColor && (
+                  <button type="button" className="color-reset" title="Reset to default" onClick={() => setBranding({ ...branding, primaryTextColor: BRAND_DEFAULTS.primaryTextColor })}><RotateCcw size={14} /></button>
+                )}
+              </div>
+              <small className="color-hint">Text shown on the top header strip</small>
+            </label>
+            <label>
+              Accent — background
               <div className="color-field">
                 <input type="color" value={branding.accentColor} onChange={(event) => setBranding({ ...branding, accentColor: event.target.value })} />
                 <input value={branding.accentColor} onChange={(event) => setBranding({ ...branding, accentColor: event.target.value })} />
+                {branding.accentColor !== BRAND_DEFAULTS.accentColor && (
+                  <button type="button" className="color-reset" title="Reset to default" onClick={() => setBranding({ ...branding, accentColor: BRAND_DEFAULTS.accentColor })}><RotateCcw size={14} /></button>
+                )}
               </div>
+              <small className="color-hint">Line under the menu &amp; breaking news bar background</small>
+            </label>
+            <label>
+              Accent — text color
+              <div className="color-field">
+                <input type="color" value={branding.accentTextColor} onChange={(event) => setBranding({ ...branding, accentTextColor: event.target.value })} />
+                <input value={branding.accentTextColor} onChange={(event) => setBranding({ ...branding, accentTextColor: event.target.value })} />
+                {branding.accentTextColor !== BRAND_DEFAULTS.accentTextColor && (
+                  <button type="button" className="color-reset" title="Reset to default" onClick={() => setBranding({ ...branding, accentTextColor: BRAND_DEFAULTS.accentTextColor })}><RotateCcw size={14} /></button>
+                )}
+              </div>
+              <small className="color-hint">Text shown on the breaking news bar</small>
+            </label>
+            <label>
+              Footer — background
+              <div className="color-field">
+                <input type="color" value={branding.footerColor} onChange={(event) => setBranding({ ...branding, footerColor: event.target.value })} />
+                <input value={branding.footerColor} onChange={(event) => setBranding({ ...branding, footerColor: event.target.value })} />
+                {branding.footerColor !== BRAND_DEFAULTS.footerColor && (
+                  <button type="button" className="color-reset" title="Reset to default" onClick={() => setBranding({ ...branding, footerColor: BRAND_DEFAULTS.footerColor })}><RotateCcw size={14} /></button>
+                )}
+              </div>
+              <small className="color-hint">Footer section background (subscriber form, links, copyright)</small>
+            </label>
+            <label>
+              Footer — text color
+              <div className="color-field">
+                <input type="color" value={branding.footerTextColor} onChange={(event) => setBranding({ ...branding, footerTextColor: event.target.value })} />
+                <input value={branding.footerTextColor} onChange={(event) => setBranding({ ...branding, footerTextColor: event.target.value })} />
+                {branding.footerTextColor !== BRAND_DEFAULTS.footerTextColor && (
+                  <button type="button" className="color-reset" title="Reset to default" onClick={() => setBranding({ ...branding, footerTextColor: BRAND_DEFAULTS.footerTextColor })}><RotateCcw size={14} /></button>
+                )}
+              </div>
+              <small className="color-hint">Text shown in the footer section</small>
             </label>
             <label className="full-width">
-              Logo URL (placeholder)
-              <div className="upload-placeholder">
-                <ImageIcon size={24} />
-                <span>Logo upload will use RustFS media storage.</span>
-                <input value={branding.logoUrl} onChange={(event) => setBranding({ ...branding, logoUrl: event.target.value })} placeholder="https://..." />
+              Logo image
+              <div className="branding-upload">
+                {branding.logoUrl ? (
+                  <div className="branding-preview">
+                    <img src={branding.logoUrl} alt="Logo preview" />
+                    <div className="branding-preview-actions">
+                      <button type="button" className="secondary-button" onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}>
+                        {uploadingLogo ? <Loader2 size={14} className="spinning" /> : <Upload size={14} />} Replace
+                      </button>
+                      <button type="button" className="color-reset" title="Remove logo" onClick={() => setBranding({ ...branding, logoUrl: "" })}><X size={14} /></button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="branding-dropzone" onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}>
+                    {uploadingLogo ? <Loader2 size={20} className="spinning" /> : <ImageIcon size={24} />}
+                    <span>{uploadingLogo ? "Uploading…" : "Click to upload logo"}</span>
+                  </button>
+                )}
+                <input ref={logoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadBrandingImage(file, "logoUrl"); event.target.value = ""; }} />
               </div>
+              <small className="color-hint">Shown in the header and footer (PNG, JPG, WebP — recommended height 52px)</small>
             </label>
             <label className="full-width">
-              Favicon URL (placeholder)
-              <div className="upload-placeholder">
-                <ImageIcon size={24} />
-                <span>Favicon upload will use RustFS media storage.</span>
-                <input value={branding.faviconUrl} onChange={(event) => setBranding({ ...branding, faviconUrl: event.target.value })} placeholder="https://..." />
+              Favicon image
+              <div className="branding-upload">
+                {branding.faviconUrl ? (
+                  <div className="branding-preview">
+                    <img src={branding.faviconUrl} alt="Favicon preview" className="favicon-preview-img" />
+                    <div className="branding-preview-actions">
+                      <button type="button" className="secondary-button" onClick={() => faviconInputRef.current?.click()} disabled={uploadingFavicon}>
+                        {uploadingFavicon ? <Loader2 size={14} className="spinning" /> : <Upload size={14} />} Replace
+                      </button>
+                      <button type="button" className="color-reset" title="Remove favicon" onClick={() => setBranding({ ...branding, faviconUrl: "" })}><X size={14} /></button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="branding-dropzone" onClick={() => faviconInputRef.current?.click()} disabled={uploadingFavicon}>
+                    {uploadingFavicon ? <Loader2 size={20} className="spinning" /> : <ImageIcon size={24} />}
+                    <span>{uploadingFavicon ? "Uploading…" : "Click to upload favicon"}</span>
+                  </button>
+                )}
+                <input ref={faviconInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadBrandingImage(file, "faviconUrl"); event.target.value = ""; }} />
               </div>
+              <small className="color-hint">Shown in the browser tab (square PNG or ICO — recommended 32×32 or 64×64)</small>
             </label>
           </div>
         </section>

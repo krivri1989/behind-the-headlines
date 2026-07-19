@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { stripLeadingImages, stripAgencyArtifacts } from "@/lib/content-helpers";
+import { ArticleComments } from "./article-comments";
 import type { PublicArticle } from "@/lib/public-data";
 
 export function useImageFallback() {
@@ -70,61 +71,59 @@ function ArticleBody({ article }: { article: PublicArticle }) {
   );
 }
 
+function ArticleNav({ prev, next }: { prev: PublicArticle | null; next: PublicArticle | null }) {
+  if (!prev && !next) return null;
+  return (
+    <nav className="article-prev-next" aria-label="Article navigation">
+      {prev ? (
+        <Link href={"/article/" + prev.slug} className="article-nav-link article-nav-prev">
+          {prev.featuredImage?.url && (
+            <div className="article-nav-thumb">
+              <img src={prev.featuredImage.url} alt={prev.featuredImage.alt || prev.title} />
+            </div>
+          )}
+          <div className="article-nav-text">
+            <span className="article-nav-direction">&larr; Previous</span>
+            <span className="article-nav-title">{prev.title}</span>
+          </div>
+        </Link>
+      ) : <span className="article-nav-link article-nav-prev disabled" />}
+      {next ? (
+        <Link href={"/article/" + next.slug} className="article-nav-link article-nav-next">
+          <div className="article-nav-text">
+            <span className="article-nav-direction">Next &rarr;</span>
+            <span className="article-nav-title">{next.title}</span>
+          </div>
+          {next.featuredImage?.url && (
+            <div className="article-nav-thumb">
+              <img src={next.featuredImage.url} alt={next.featuredImage.alt || next.title} />
+            </div>
+          )}
+        </Link>
+      ) : <span className="article-nav-link article-nav-next disabled" />}
+    </nav>
+  );
+}
+
 export function ArticleReader({
   initialArticle,
   related,
+  prevArticle,
   nextArticle,
+  commentsEnabled,
 }: {
   initialArticle: PublicArticle;
   related: PublicArticle[];
+  prevArticle: PublicArticle | null;
   nextArticle: PublicArticle | null;
+  commentsEnabled?: boolean;
 }) {
-  const [articles, setArticles] = useState<PublicArticle[]>([initialArticle]);
-  const [nextId, setNextId] = useState<string | null>(nextArticle ? nextArticle.id : null);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(!!nextArticle);
-  const endRef = useRef<HTMLDivElement | null>(null);
-
-  const loadNext = useCallback(async () => {
-    if (loading || !hasMore || !nextId) return;
-    setLoading(true);
-    try {
-      const last = articles[articles.length - 1];
-      const res = await fetch(`/api/articles/next?id=${last.id}&categories=${last.categories.map((c) => c.id).join(",")}`);
-      const data = await res.json();
-      if (res.ok && data.article) {
-        setArticles((prev) => [...prev, data.article]);
-        setNextId(data.article.id);
-      } else {
-        setHasMore(false);
-      }
-    } catch {
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [articles, hasMore, loading, nextId]);
-
-  useEffect(() => {
-    if (!endRef.current || !hasMore) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) loadNext();
-      },
-      { rootMargin: "300px" }
-    );
-    observer.observe(endRef.current);
-    return () => observer.disconnect();
-  }, [loadNext, hasMore, articles.length]);
-
   return (
     <div className="article-reader">
       <div className="article-main-col">
-        {articles.map((article) => (
-          <ArticleBody key={article.id} article={article} />
-        ))}
-        {hasMore && <div ref={endRef} className="article-loader">Loading next story...</div>}
-        {!hasMore && <div className="article-end">No more stories in this category</div>}
+        <ArticleBody article={initialArticle} />
+        <ArticleNav prev={prevArticle} next={nextArticle} />
+        <ArticleComments articleId={initialArticle.id} enabled={Boolean(commentsEnabled)} />
       </div>
 
       <aside className="article-sidebar">

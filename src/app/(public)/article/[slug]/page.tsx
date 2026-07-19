@@ -1,4 +1,4 @@
-import { getArticleBySlug, getRelatedArticles, getSiteSettingsPublic, getNextArticle } from "@/lib/public-data";
+import { getArticleBySlug, getRelatedArticles, getSiteSettingsPublic, getNextArticle, getPreviousArticle } from "@/lib/public-data";
 import { ArticleReader } from "@/components/article-reader";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -54,14 +54,16 @@ export default async function ArticlePage({ params }: Props) {
   const article = await getArticleBySlug(slug);
   if (!article) notFound();
 
-  const [settings, related, nextArticle] = await Promise.all([
+  const [settings, related, nextArticle, prevArticle] = await Promise.all([
     getSiteSettingsPublic(),
     getRelatedArticles(article.id, article.categories.map((c) => c.id), 6),
     getNextArticle(article.id, article.categories.map((c) => c.id)),
+    getPreviousArticle(article.id, article.categories.map((c) => c.id)),
   ]);
 
   const publicationName = (settings?.publicationName as string) || "Behind The Headlines";
   const primaryCategory = article.categories[0];
+  const commentsEnabled = Boolean(settings?.enableComments);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -93,7 +95,7 @@ export default async function ArticlePage({ params }: Props) {
         <span className="breadcrumb-current">{article.title}</span>
       </nav>
 
-      <ArticleReader initialArticle={article} related={related} nextArticle={nextArticle} />
+      <ArticleReader initialArticle={article} related={related} prevArticle={prevArticle} nextArticle={nextArticle} commentsEnabled={commentsEnabled} />
     </div>
   );
 }

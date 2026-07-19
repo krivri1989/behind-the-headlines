@@ -369,20 +369,20 @@ async function fetchFeed(feedUrl: string): Promise<{ title: string; items: FeedI
 
 // --- Import logic ---------------------------------------------------------
 
-async function findDuplicate(guid: string, link: string, title: string, content: string): Promise<boolean> {
+async function findDuplicate(guid: string, link: string, title: string, content: string): Promise<{ _id: unknown; categoryIds: unknown[] } | null> {
   const Article = mongoose.model("Article");
   if (guid) {
-    const byGuid = await Article.findOne({ rssGuid: guid }).lean();
-    if (byGuid) return true;
+    const byGuid = await Article.findOne({ rssGuid: guid }).lean() as unknown as { _id: unknown; categoryIds?: unknown[] } | null;
+    if (byGuid) return { _id: byGuid._id, categoryIds: (byGuid.categoryIds || []) as unknown[] };
   }
   if (link) {
-    const byUrl = await Article.findOne({ sourceUrl: link }).lean();
-    if (byUrl) return true;
+    const byUrl = await Article.findOne({ sourceUrl: link }).lean() as unknown as { _id: unknown; categoryIds?: unknown[] } | null;
+    if (byUrl) return { _id: byUrl._id, categoryIds: (byUrl.categoryIds || []) as unknown[] };
   }
   const hash = contentHash(title, content);
-  const byHash = await Article.findOne({ contentHash: hash }).lean();
-  if (byHash) return true;
-  return false;
+  const byHash = await Article.findOne({ contentHash: hash }).lean() as unknown as { _id: unknown; categoryIds?: unknown[] } | null;
+  if (byHash) return { _id: byHash._id, categoryIds: (byHash.categoryIds || []) as unknown[] };
+  return null;
 }
 
 async function processJob(job: RssJob): Promise<{ imported: number; skipped: number }> {
@@ -400,25 +400,43 @@ async function processJob(job: RssJob): Promise<{ imported: number; skipped: num
 
   const { items } = await fetchFeed(source.feedUrl);
 
+  // Get the configured RSS default author name from settings
+  const SiteSettings = mongoose.model("SiteSettings");
+  const settingsDoc = await SiteSettings.findOne().lean() as unknown as { rssDefaultAuthor?: string } | null;
+  const authorName = (settingsDoc?.rssDefaultAuthor as string) || "RSS Feed";
+
   // Find or create system user
   let systemUser = await User.findOne({ email: "rss-system@behind-the-headlines.local" });
   if (!systemUser) {
     systemUser = await User.create({
-      name: "RSS System",
+      name: authorName,
       email: "rss-system@behind-the-headlines.local",
       passwordHash: crypto.randomBytes(32).toString("hex"),
       role: "editor",
       active: false,
     });
+  } else if (systemUser.name !== authorName) {
+    systemUser.name = authorName;
+    await systemUser.save();
   }
 
   let imported = 0;
   let skipped = 0;
 
   for (const item of items) {
-    const exists = await findDuplicate(item.guid, item.link, item.title, item.content);
-    if (exists) {
-      skipped++;
+    const existing = await findDuplicate(item.guid, item.link, item.title, item.content);
+    if (existing) {
+      // If the existing article doesn't already have this source's category,
+      // add it so the article appears in the correct category section.
+      const existingCatIds = (existing.categoryIds || []).map(String);
+      if (!existingCatIds.includes(String(source.categoryId))) {
+        await Article.findByIdAndUpdate(existing._id, {
+          $addToSet: { categoryIds: source.categoryId },
+        });
+        imported++;
+      } else {
+        skipped++;
+      }
       continue;
     }
 

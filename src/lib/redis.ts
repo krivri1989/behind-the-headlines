@@ -128,11 +128,14 @@ export async function invalidateContentCache(): Promise<void> {
 
 export async function invalidateSettingsCache(): Promise<void> {
   await cacheDel(cacheKeys.siteSettings);
+  await cacheDel("cache:public:settings");
 }
 
 export async function invalidateMenuCache(): Promise<void> {
   await cacheDel(cacheKeys.headerMenu);
   await cacheDel(cacheKeys.footerMenu);
+  await cacheDel("cache:public:menu-header");
+  await cacheDel("cache:public:menu-footer");
 }
 
 export async function invalidateCategoriesCache(): Promise<void> {
