@@ -179,6 +179,9 @@ button { cursor:pointer; }
 .comment-moderation-actions .btn-delete:hover{background:#f8d7da}
 .comment-moderation-actions button:disabled{opacity:.5;cursor:not-allowed}
 .audit-metadata strong{color:#9a9992;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.metric-icon.status-success{background:#e5f2ed;color:#387957}
+.metric-icon.status-partial{background:#fbf2df;color:#947246}
+.metric-icon.status-failed{background:#fbeae8;color:#c15048}
 @media(max-width:600px){.audit-list article{grid-template-columns:34px 1fr}.audit-category{display:none}}
 .login-form{display:grid;gap:16px;margin-top:28px}
 .login-form label{display:grid;gap:6px;font-size:12px;font-weight:600;color:var(--ink)}
@@ -220,6 +223,7 @@ button { cursor:pointer; }
 .editor-form select{appearance:none;padding-right:28px}
 .editor-form .select-wrapper>svg{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
 .editor-form .field-error input,.editor-form .field-error select{border-color:#c15048;background:#fff8f8}
+.editor-form .field-hint{color:#9a9992;font-size:11px;font-weight:400;margin-top:4px;display:block}
 .editor-list{display:grid}
 .editor-list article{display:grid;grid-template-columns:42px minmax(0,1.8fr) 120px 100px auto;gap:14px;align-items:center;padding:14px 0;border-top:1px solid #f0eee9}
 .editor-list article:first-child{border-top:0}

@@ -42,7 +42,7 @@ const adminNavigation = [
   { label: "Editors", icon: Users, href: "/dashboard/editors" },
   { label: "Subscribers", icon: Users, href: "/dashboard/subscribers" },
   { label: "Comments", icon: MessageSquare, href: "/dashboard/comments" },
-  { label: "Audit logs", icon: FileText, href: "/dashboard/audit-logs" },
+  { label: "RSS Audit", icon: FileText, href: "/dashboard/audit-logs" },
 ];
 
 const editorNavigation = [

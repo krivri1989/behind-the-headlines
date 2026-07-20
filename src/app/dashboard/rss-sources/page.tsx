@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle2, ChevronDown, Clock, Download, Edit2, ExternalLink, Loader2, Pause, Play, Plus, Radio, RefreshCw, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type Category = { id: string; name: string };
 type RssSource = { id: string; name: string; feedUrl: string; category: string; categoryId?: string; intervalMinutes: number; active: boolean; lastRunAt: string | null; nextRunAt: string | null; lastError: string | null; lastImportedCount: number | null };
@@ -195,6 +196,7 @@ export default function RssSourcesPage() {
   }
 
   return (
+    <AdminGuard>
     <main className="workspace-page">
       <header className="workspace-header">
         <div><p className="eyebrow">AUTOMATED CONTENT</p><h1>RSS sources</h1><p className="subtitle">Manage licensed feeds, schedules, and import health.</p></div>
@@ -345,5 +347,6 @@ export default function RssSourcesPage() {
         </section>
       )}
     </main>
+    </AdminGuard>
   );
 }

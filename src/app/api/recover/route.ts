@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { Article, RssSource, User } from "@/lib/models";
 import { sanitizeRssContent, stripLeadingImages, stripAgencyArtifacts } from "@/lib/sanitize";
@@ -121,9 +121,10 @@ type RecoverableArticle = {
  *   - { type: "error", message: "..." }           — error
  */
 export async function GET(request: Request) {
-  const session = await getSession();
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  try {
+    await requireAdmin();
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Admin access required" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -311,9 +312,10 @@ export async function GET(request: Request) {
  * and saves them to the database. Streams progress as NDJSON.
  */
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  try {
+    await requireAdmin();
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Admin access required" }, { status: 403 });
   }
 
   const body = await request.json();

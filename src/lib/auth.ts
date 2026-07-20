@@ -33,16 +33,35 @@ export async function getSession(): Promise<SessionUser | null> {
 
 export async function requireSession() {
   const session = await getSession();
-  if (!session) throw new Error("Authentication required.");
+  if (!session) throw new AuthError("Authentication required.", 401);
   return session;
 }
 
 export async function requireAdmin() {
   const session = await requireSession();
-  if (session.role !== "admin") throw new Error("Administrator access required.");
+  if (session.role !== "admin") throw new AuthError("Administrator access required.", 403);
   return session;
 }
 
 export function canManageArticle(user: SessionUser, articleAuthorId: string) {
   return user.role === "admin" || user.id === articleAuthorId;
+}
+
+/** Custom error with an HTTP status code, for auth failures. */
+export class AuthError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "AuthError";
+    this.status = status;
+  }
+}
+
+/**
+ * Returns the appropriate HTTP status code for an error caught in an API route.
+ * AuthErrors carry their own status; other errors default to 500.
+ */
+export function errorStatus(error: unknown): number {
+  if (error instanceof AuthError) return error.status;
+  return 500;
 }

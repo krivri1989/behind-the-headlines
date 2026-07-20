@@ -3,6 +3,7 @@
 import { Download, Mail, MoreHorizontal, Search, Trash2, UserPlus, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type Subscriber = { id: string; email: string; status: string; consentedAt: string; sourcePath: string };
 
@@ -68,6 +69,7 @@ export default function SubscribersPage() {
   }
 
   return (
+    <AdminGuard>
     <main className="workspace-page">
       <header className="workspace-header">
         <div><p className="eyebrow">AUDIENCE</p><h1>Subscribers</h1><p className="subtitle">Manage newsletter subscribers and consent records.</p></div>
@@ -121,5 +123,6 @@ export default function SubscribersPage() {
         )}
       </section>
     </main>
+    </AdminGuard>
   );
 }

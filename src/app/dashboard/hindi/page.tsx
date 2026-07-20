@@ -2,6 +2,7 @@
 
 import { Calendar, ExternalLink, Key, Languages, Loader2, Search, Terminal, AlertCircle } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { AdminGuard } from "@/components/admin-guard";
 
 type HindiArticle = {
   slug: string;
@@ -169,6 +170,7 @@ export default function HindiPage() {
   }
 
   return (
+    <AdminGuard>
     <div className="workspace-page">
       <div className="workspace-header">
         <div>
@@ -336,5 +338,6 @@ export default function HindiPage() {
         </div>
       )}
     </div>
+    </AdminGuard>
   );
 }

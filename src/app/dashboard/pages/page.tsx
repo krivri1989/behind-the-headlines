@@ -4,6 +4,7 @@ import { FileText, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type PageItem = {
   id: string;
@@ -46,6 +47,7 @@ export default function PagesListPage() {
   const filtered = filter === "all" ? pages : pages.filter((p) => p.status === filter);
 
   return (
+    <AdminGuard>
     <main className="workspace-page">
       <header className="workspace-header">
         <div>
@@ -97,5 +99,6 @@ export default function PagesListPage() {
         </div>
       )}
     </main>
+    </AdminGuard>
   );
 }

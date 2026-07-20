@@ -123,14 +123,14 @@ export function PublicFooter({
         </div>
       </div>
 
-      <div className="footer-bottom">
+      <div className="footer-bottom" >
         <div className="footer-bottom-inner">
-          <span>&copy; {new Date().getFullYear()} {publicationName}. All rights reserved.</span>
-          <div className="footer-bottom-links">
+          <span>&copy; {new Date().getFullYear()} {publicationName}. All rights reserved. Powered by Brands In Motion Marketing Services LLP.</span>
+          {/* <div className="footer-bottom-links">
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/copyright">Copyright</Link>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>

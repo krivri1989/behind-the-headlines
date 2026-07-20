@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useCallback } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type MediaItem = { id: string; url: string; filename: string; alt: string; contentType: string };
 
@@ -59,6 +60,7 @@ export default function NewPageEditor() {
   }
 
   return (
+    <AdminGuard>
     <main className="workspace-page editor-page">
       <header className="editor-header">
         <Link href="/dashboard/pages" className="back-link"><ArrowLeft size={17} /> Pages</Link>
@@ -128,5 +130,6 @@ export default function NewPageEditor() {
         </div>
       )}
     </main>
+    </AdminGuard>
   );
 }

@@ -3,6 +3,7 @@
 import { CheckCircle2, Globe2, ImageIcon, Loader2, Megaphone, Palette, RotateCcw, Save, Settings2, Shield, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type Tab = "general" | "seo" | "branding" | "advanced" | "advertising";
 
@@ -218,6 +219,7 @@ export default function SettingsPage() {
   ];
 
   return (
+    <AdminGuard>
     <main className="workspace-page">
       <header className="workspace-header">
         <div>
@@ -515,5 +517,6 @@ export default function SettingsPage() {
         </section>
       )}
     </main>
+    </AdminGuard>
   );
 }

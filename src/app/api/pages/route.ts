@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Page, Menu } from "@/lib/models";
-import { getSession } from "@/lib/auth";
+import { requireAdmin, errorStatus } from "@/lib/auth";
 
 function slugify(text: string): string {
   return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || `page-${Date.now()}`;
@@ -10,8 +10,7 @@ function slugify(text: string): string {
 // GET /api/pages — list all pages (admin only)
 export async function GET(request: Request) {
   try {
-    const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    await requireAdmin();
 
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -34,15 +33,14 @@ export async function GET(request: Request) {
       })),
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch pages" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch pages" }, { status: errorStatus(error) });
   }
 }
 
 // POST /api/pages — create a new page (admin only)
 export async function POST(request: Request) {
   try {
-    const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const session = await requireAdmin();
 
     const { title, content, excerpt, status, seoTitle, seoDescription } = await request.json();
     if (!title || !title.trim()) return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -80,7 +78,7 @@ export async function POST(request: Request) {
       status: page.status,
     }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create page" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create page" }, { status: errorStatus(error) });
   }
 }
 

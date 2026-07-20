@@ -3,6 +3,7 @@
 import { ArrowLeft, Calendar, Loader2, AlertCircle, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AdminGuard } from "@/components/admin-guard";
 
 type ArticleDetail = {
   title: string;
@@ -92,6 +93,7 @@ export default function HindiViewPage() {
     : "";
 
   return (
+    <AdminGuard>
     <div style={{ minHeight: "100vh", background: "#f7f6f2" }} lang="hi">
       {/* Top bar */}
       <div style={{
@@ -203,5 +205,6 @@ export default function HindiViewPage() {
         </article>
       </div>
     </div>
+    </AdminGuard>
   );
 }

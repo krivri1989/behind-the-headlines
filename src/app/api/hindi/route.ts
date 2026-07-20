@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { sanitizeRssContent, stripLeadingImages, stripAgencyArtifacts } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,10 @@ export const dynamic = "force-dynamic";
  * - mode=detail: Returns full article content for a single article
  */
 export async function GET(request: Request) {
-  const session = await getSession();
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  try {
+    await requireAdmin();
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Admin access required" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);

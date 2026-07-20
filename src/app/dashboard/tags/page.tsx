@@ -2,6 +2,7 @@
 import { Plus, Search, Tags, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type Tag = { id: string; name: string; slug: string };
 
@@ -51,6 +52,7 @@ export default function TagsPage() {
   const current = tags.find((tag) => tag.id === selectedId);
 
   return (
+    <AdminGuard>
     <main className="workspace-page">
       <header className="workspace-header">
         <div><p className="eyebrow">CONTENT STRUCTURE</p><h1>Tags</h1><p className="subtitle">Group related stories for search and discovery.</p></div>
@@ -85,5 +87,6 @@ export default function TagsPage() {
         </section>
       )}
     </main>
+    </AdminGuard>
   );
 }

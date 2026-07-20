@@ -1,116 +1,103 @@
 "use client";
 
-import { Clock3, FileText, Search, Shield, UserRound, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, AlertCircle, Clock3, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
-type AuditLog = {
+type RssImport = {
   id: string;
-  actorId?: string;
-  action: string;
-  entityType: string;
-  entityId?: string;
-  metadata?: Record<string, unknown>;
+  sourceId: string;
+  sourceName: string;
+  status: string;
+  importedCount: number;
+  skippedCount: number;
+  error?: string;
   createdAt: string;
 };
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  article: <FileText size={15} />,
-  editor: <UserRound size={15} />,
-  menu: <Shield size={15} />,
-  rss: <Clock3 size={15} />,
-  subscriber: <UserRound size={15} />,
-  settings: <Shield size={15} />,
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  article: "Articles",
-  editor: "Editors",
-  menu: "Menus",
-  rss: "RSS",
-  subscriber: "Subscribers",
-  settings: "Settings",
+const STATUS_META: Record<string, { icon: React.ReactNode; label: string; className: string }> = {
+  success: { icon: <CheckCircle2 size={15} />, label: "Success", className: "status-success" },
+  partial: { icon: <Clock3 size={15} />, label: "Partial", className: "status-partial" },
+  failed: { icon: <AlertCircle size={15} />, label: "Failed", className: "status-failed" },
 };
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [imports, setImports] = useState<RssImport[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<AuditLog[]>(`/api/audit-logs?category=${categoryFilter}&search=${encodeURIComponent(query)}`)
-      .then(setLogs)
+    setLoading(true);
+    apiFetch<RssImport[]>(`/api/rss-imports?search=${encodeURIComponent(query)}`)
+      .then(setImports)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [categoryFilter, query]);
+  }, [query]);
 
-  const filtered = useMemo(() => logs, [logs]);
-  const selected = selectedId ? logs.find((log) => log.id === selectedId) : null;
+  const selected = selectedId ? imports.find((imp) => imp.id === selectedId) : null;
 
   return (
-    <main className="workspace-page">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">ACTIVITY HISTORY</p>
-          <h1>Audit logs</h1>
-          <p className="subtitle">Record of important newsroom and system activity.</p>
-        </div>
-      </header>
-
-      <section className="workspace-panel audit-list-panel">
-        <div className="list-toolbar audit-toolbar">
-          <label>
-            <Search size={15} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search audit history…" />
-          </label>
-          <div className="status-tabs audit-tabs">
-            {["All", "article", "editor", "menu", "rss", "subscriber", "settings"].map((item) => (
-              <button key={item} className={categoryFilter === item ? "selected" : ""} onClick={() => setCategoryFilter(item)}>
-                {item === "All" ? "All" : CATEGORY_LABELS[item] || item}
-              </button>
-            ))}
+    <AdminGuard>
+      <main className="workspace-page">
+        <header className="workspace-header">
+          <div>
+            <p className="eyebrow">RSS ACTIVITY HISTORY</p>
+            <h1>RSS Audit</h1>
+            <p className="subtitle">Record of RSS import activity and feed events.</p>
           </div>
-        </div>
+        </header>
 
-        {loading ? <div className="empty-state">Loading audit logs…</div> : filtered.length === 0 ? (
-          <div className="empty-state">No audit entries match your search.</div>
-        ) : (
-          <div className="audit-list">
-            {filtered.map((log) => (
-              <article key={log.id} className={selectedId === log.id ? "selected" : ""}>
-                <span className="metric-icon plum">{CATEGORY_ICONS[log.entityType] || <FileText size={15} />}</span>
-                <button className="audit-content" type="button" onClick={() => setSelectedId(log.id === selectedId ? null : log.id)}>
-                  <strong>{log.actorId || "System"}</strong> {log.action}
-                  <small>{new Date(log.createdAt).toLocaleString()}</small>
-                </button>
-                <span className="audit-category">{CATEGORY_LABELS[log.entityType] || log.entityType}</span>
-              </article>
-            ))}
+        <section className="workspace-panel audit-list-panel">
+          <div className="list-toolbar audit-toolbar">
+            <label>
+              <Search size={15} />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by source name or status…" />
+            </label>
           </div>
-        )}
-      </section>
 
-      {selected && (
-        <section className="workspace-panel audit-detail-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>{selected.action}</h2>
-              <p>{selected.actorId || "System"} · {new Date(selected.createdAt).toLocaleString()}</p>
-            </div>
-            <button className="more-button" type="button" onClick={() => setSelectedId(null)} aria-label="Close details"><X size={18} /></button>
-          </div>
-          <p className="audit-detail-text">Entity: {selected.entityType}{selected.entityId ? ` (${selected.entityId})` : ""}</p>
-          {selected.metadata && (
-            <div className="audit-metadata">
-              {Object.entries(selected.metadata).map(([key, value]) => (
-                <div key={key}><strong>{key}</strong><span>{String(value)}</span></div>
-              ))}
+          {loading ? <div className="empty-state">Loading RSS audit logs…</div> : imports.length === 0 ? (
+            <div className="empty-state">No RSS import entries match your search.</div>
+          ) : (
+            <div className="audit-list">
+              {imports.map((imp) => {
+                const meta = STATUS_META[imp.status] || STATUS_META.partial;
+                return (
+                  <article key={imp.id} className={selectedId === imp.id ? "selected" : ""}>
+                    <span className={"metric-icon " + meta.className}>{meta.icon}</span>
+                    <button className="audit-content" type="button" onClick={() => setSelectedId(imp.id === selectedId ? null : imp.id)}>
+                      <strong>{imp.sourceName}</strong> {imp.importedCount} imported, {imp.skippedCount} skipped
+                      <small>{new Date(imp.createdAt).toLocaleString()}</small>
+                    </button>
+                    <span className="audit-category">{meta.label}</span>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
-      )}
-    </main>
+
+        {selected && (
+          <section className="workspace-panel audit-detail-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>{selected.sourceName}</h2>
+                <p>{new Date(selected.createdAt).toLocaleString()}</p>
+              </div>
+              <button className="more-button" type="button" onClick={() => setSelectedId(null)} aria-label="Close details"><X size={18} /></button>
+            </div>
+            <div className="audit-metadata">
+              <div><strong>Status</strong><span>{(STATUS_META[selected.status] || STATUS_META.partial).label}</span></div>
+              <div><strong>Imported</strong><span>{selected.importedCount}</span></div>
+              <div><strong>Skipped</strong><span>{selected.skippedCount}</span></div>
+            </div>
+            {selected.error && (
+              <p className="audit-detail-text" style={{ marginTop: 12, color: "#c0392b" }}>Error: {selected.error}</p>
+            )}
+          </section>
+        )}
+      </main>
+    </AdminGuard>
   );
 }

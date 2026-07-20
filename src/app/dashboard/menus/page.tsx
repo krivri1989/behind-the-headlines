@@ -3,6 +3,7 @@
 import { GripVertical, Plus, Trash2, X, Pencil, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type MenuItem = { label: string; href: string; order: number; visible: boolean };
 type MenuData = { id: string; location: "header" | "footer"; items: MenuItem[] };
@@ -130,6 +131,7 @@ export default function MenusPage() {
   const allItems = [...header, ...footer];
 
   return (
+    <AdminGuard>
     <main className="workspace-page">
       <header className="workspace-header">
         <div><p className="eyebrow">SITE NAVIGATION</p><h1>Menus</h1><p className="subtitle">Manage header and footer navigation.</p></div>
@@ -207,5 +209,6 @@ export default function MenusPage() {
         </section>
       </section>
     </main>
+    </AdminGuard>
   );
 }

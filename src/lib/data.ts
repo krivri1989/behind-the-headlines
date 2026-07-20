@@ -353,16 +353,25 @@ export async function getDashboardStats(options: { authorId?: string } = {}) {
   };
 }
 
-export async function createEditor(input: { name: string; email: string; role: "admin" | "editor" }) {
+export async function createEditor(input: { name: string; email: string; role: "admin" | "editor"; password?: string }) {
   await connectToDatabase();
-  const passwordHash = await import("bcryptjs").then((b) => b.hash(crypto.randomUUID().slice(0, 16), 12));
+  const password = (input.password || crypto.randomUUID().slice(0, 16)).slice(0, 100);
+  const passwordHash = await import("bcryptjs").then((b) => b.hash(password, 12));
   const user = await User.create({
     name: input.name.trim(),
     email: input.email.trim().toLowerCase(),
     passwordHash,
     role: input.role,
-    active: false,
+    active: true,
   });
+  return toObject(user);
+}
+
+export async function resetEditorPassword(id: string, password: string) {
+  await connectToDatabase();
+  if (!password || password.length < 6) throw new Error("Password must be at least 6 characters.");
+  const passwordHash = await import("bcryptjs").then((b) => b.hash(password.slice(0, 100), 12));
+  const user = await User.findByIdAndUpdate(id, { passwordHash, active: true }, { new: true });
   return toObject(user);
 }
 
@@ -528,13 +537,13 @@ type RssImportItem = {
   createdAt: string;
 };
 
-export async function getRssImports(options: { sourceId?: string; limit?: number } = {}): Promise<RssImportItem[]> {
+export async function getRssImports(options: { sourceId?: string; search?: string; limit?: number } = {}): Promise<RssImportItem[]> {
   await connectToDatabase();
   const filter: Record<string, unknown> = {};
   if (options.sourceId) filter.sourceId = options.sourceId;
   const limit = options.limit ?? 50;
-  const imports = await RssImport.find(filter).sort({ createdAt: -1 }).limit(limit).populate("sourceId", "name").lean() as Array<Record<string, unknown>>;
-  return imports.map((i) => {
+  let imports = await RssImport.find(filter).sort({ createdAt: -1 }).limit(limit * 2).populate("sourceId", "name").lean() as Array<Record<string, unknown>>;
+  let items = imports.map((i) => {
     const source = (i.sourceId as { name?: string } | null) ?? {};
     return {
       id: String(i._id),
@@ -547,4 +556,9 @@ export async function getRssImports(options: { sourceId?: string; limit?: number
       createdAt: i.createdAt ? new Date(i.createdAt as string).toISOString() : new Date().toISOString(),
     };
   });
+  if (options.search) {
+    const q = options.search.toLowerCase();
+    items = items.filter((it) => it.sourceName.toLowerCase().includes(q) || it.status.toLowerCase().includes(q) || (it.error && it.error.toLowerCase().includes(q)));
+  }
+  return items.slice(0, limit);
 }

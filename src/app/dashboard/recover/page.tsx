@@ -2,6 +2,7 @@
 
 import { Calendar, CheckCircle2, Database, Key, Loader2, RefreshCw, Save, Search, XCircle, AlertCircle, Terminal } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { AdminGuard } from "@/components/admin-guard";
 
 type RecoverableArticle = {
   slug: string;
@@ -243,6 +244,7 @@ export default function RecoverPage() {
   }
 
   return (
+    <AdminGuard>
     <div className="workspace-page">
       <div className="workspace-header">
         <div>
@@ -503,6 +505,7 @@ export default function RecoverPage() {
         </div>
       )}
     </div>
+    </AdminGuard>
   );
 }
 

@@ -66,6 +66,8 @@ const POLL_INTERVAL_MS = 30_000; // Check for due sources every 30 seconds
 const JOB_TIMEOUT_MS = 120_000; // 2 minute timeout per job
 const MAX_ATTEMPTS = 3;
 const BATCH_SIZE = 25; // Max items to import per feed
+const AUDIT_RETENTION_DAYS = 2; // Keep only last 2 days of RSS import history
+const AUDIT_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run cleanup every hour
 
 const QUEUE_KEY = "rss:queue";
 const PROCESSING_KEY = "rss:processing";
@@ -674,14 +676,35 @@ async function sendHeartbeat(stats: { processed: number; failed: number; sourceI
   await redis.set(HEARTBEAT_KEY, JSON.stringify(data), "EX", 120);
 }
 
+// --- Audit log cleanup ----------------------------------------------------
+
+async function cleanupOldAuditLogs(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - AUDIT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const RssImport = mongoose.model("RssImport");
+    const result = await RssImport.deleteMany({ createdAt: { $lt: cutoff } });
+    if (result.deletedCount > 0) {
+      log(`Cleaned up ${result.deletedCount} RSS import record(s) older than ${AUDIT_RETENTION_DAYS} day(s)`);
+    }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    log(`Audit cleanup error: ${msg}`, "error");
+  }
+}
+
 // --- Main loop ------------------------------------------------------------
 
 let processed = 0;
 let failed = 0;
 let running = true;
+let lastCleanupAt = 0;
 
 async function mainLoop(): Promise<void> {
   log("Worker main loop started");
+
+  // Run cleanup once at startup
+  await cleanupOldAuditLogs();
+  lastCleanupAt = Date.now();
 
   while (running) {
     try {
@@ -709,7 +732,13 @@ async function mainLoop(): Promise<void> {
       // 4. Send heartbeat
       await sendHeartbeat({ processed, failed });
 
-      // 5. Wait before next poll
+      // 5. Periodic cleanup of old audit logs
+      if (Date.now() - lastCleanupAt > AUDIT_CLEANUP_INTERVAL_MS) {
+        await cleanupOldAuditLogs();
+        lastCleanupAt = Date.now();
+      }
+
+      // 6. Wait before next poll
       if (!hadJobs) {
         await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       }

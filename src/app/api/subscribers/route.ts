@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSubscribers, createSubscriber, updateSubscriberStatus, deleteSubscriber } from "@/lib/data";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, errorStatus } from "@/lib/auth";
 import { rateLimit } from "@/lib/redis";
 
 export async function GET(request: Request) {
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const subscribers = await getSubscribers({ search, status });
     return NextResponse.json(subscribers);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch subscribers" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch subscribers" }, { status: errorStatus(error) });
   }
 }
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const subscriber = await createSubscriber({ email, sourcePath });
     return NextResponse.json(subscriber, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create subscriber" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create subscriber" }, { status: errorStatus(error) });
   }
 }
 
@@ -46,7 +46,7 @@ export async function PUT(request: Request) {
     const subscriber = await updateSubscriberStatus(id, status);
     return NextResponse.json(subscriber);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update subscriber" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update subscriber" }, { status: errorStatus(error) });
   }
 }
 
@@ -57,6 +57,6 @@ export async function DELETE(request: Request) {
     await deleteSubscriber(id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to delete subscriber" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to delete subscriber" }, { status: errorStatus(error) });
   }
 }

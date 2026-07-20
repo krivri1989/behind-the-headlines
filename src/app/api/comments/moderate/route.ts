@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Comment, Article } from "@/lib/models";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, errorStatus } from "@/lib/auth";
 
 // GET /api/comments/moderate?status=pending — list comments for moderation
 export async function GET(request: Request) {
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       })),
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch comments" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch comments" }, { status: errorStatus(error) });
   }
 }
 
@@ -68,6 +68,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ error: "Invalid action. Use approve, reject, or delete." }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to moderate comment" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to moderate comment" }, { status: errorStatus(error) });
   }
 }

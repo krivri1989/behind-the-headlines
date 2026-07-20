@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, X, Trash2, Loader2, MessageSquare } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type ModerationComment = {
   id: string;
@@ -55,6 +56,7 @@ export default function CommentsPage() {
   };
 
   return (
+    <AdminGuard>
     <div className="workspace-panel">
       <div className="panel-heading">
         <div>
@@ -122,5 +124,6 @@ export default function CommentsPage() {
         </div>
       )}
     </div>
+    </AdminGuard>
   );
 }

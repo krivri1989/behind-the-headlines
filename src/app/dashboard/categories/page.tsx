@@ -3,6 +3,7 @@
 import { GripVertical, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { AdminGuard } from "@/components/admin-guard";
 
 type Category = { id: string; name: string; slug: string; description?: string; visible: boolean; order: number };
 
@@ -73,6 +74,7 @@ export default function CategoriesPage() {
   const selected = selectedId ? categories.find((c) => c.id === selectedId) : null;
 
   return (
+    <AdminGuard>
     <main className="workspace-page">
       <header className="workspace-header">
         <div>
@@ -124,5 +126,6 @@ export default function CategoriesPage() {
         </section>
       )}
     </main>
+    </AdminGuard>
   );
 }

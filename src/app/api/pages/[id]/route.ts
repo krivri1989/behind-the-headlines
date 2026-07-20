@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { Page, Menu } from "@/lib/models";
-import { getSession } from "@/lib/auth";
+import { requireAdmin, errorStatus } from "@/lib/auth";
 
 function slugify(text: string): string {
   return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || `page-${Date.now()}`;
@@ -10,8 +10,7 @@ function slugify(text: string): string {
 // GET /api/pages/[id] — get a single page
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    await requireAdmin();
 
     const { id } = await params;
     await connectToDatabase();
@@ -31,15 +30,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       updatedAt: (page as Record<string, unknown>).updatedAt as string,
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch page" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to fetch page" }, { status: errorStatus(error) });
   }
 }
 
 // PUT /api/pages/[id] — update a page
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    await requireAdmin();
 
     const { id } = await params;
     const body = await request.json();
@@ -83,15 +81,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       status: page.status,
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update page" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update page" }, { status: errorStatus(error) });
   }
 }
 
 // DELETE /api/pages/[id] — delete a page
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    await requireAdmin();
 
     const { id } = await params;
     await connectToDatabase();
@@ -104,7 +101,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await Page.findByIdAndDelete(id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to delete page" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to delete page" }, { status: errorStatus(error) });
   }
 }
 

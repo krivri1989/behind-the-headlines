@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { importRssSource } from "@/lib/rss-import";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, errorStatus } from "@/lib/auth";
 import { rateLimit } from "@/lib/redis";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {

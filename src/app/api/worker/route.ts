@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getWorkerHeartbeat, getQueueStats } from "@/lib/redis";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, errorStatus } from "@/lib/auth";
 
 export async function GET() {
   try {
@@ -24,7 +24,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch worker status" },
-      { status: error instanceof Error && error.message.includes("required") ? 401 : 500 },
+      { status: errorStatus(error) },
     );
   }
 }
