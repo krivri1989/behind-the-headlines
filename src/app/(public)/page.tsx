@@ -48,6 +48,13 @@ export default async function HomePage() {
   for (const a of dedupedTrending) usedIds.add(a.id);
   const jjdSpecialDeduped = { label: jjdSpecial.label, articles: dedupedJjdArticles };
 
+  // For the category sections below the tri-column, only dedup against
+  // Column 1 (Latest by Category). The Trending and JJD Special columns are
+  // feature columns and should not deplete the category sections below,
+  // otherwise sections like "Trending" end up with only 1 article.
+  const categorySectionUsedIds = new Set<string>();
+  for (const item of latestByCategory) categorySectionUsedIds.add(item.article.id);
+
   // Derive category sections from the header menu items that point to a category.
   // Menu items have href like "/category/national", "/category/sports", etc.
   const menuCategorySlugs = headerMenu
@@ -69,7 +76,7 @@ export default async function HomePage() {
   // Filter out articles already shown in the tri-column section
   const dedupedCategorySections = categorySections.map((section) => ({
     ...section,
-    articles: section.articles.filter((a) => !usedIds.has(a.id)).slice(0, 6),
+    articles: section.articles.filter((a) => !categorySectionUsedIds.has(a.id)).slice(0, 6),
   }));
 
   return (
