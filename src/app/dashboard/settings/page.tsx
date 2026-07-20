@@ -1,11 +1,18 @@
 "use client";
 
-import { CheckCircle2, Globe2, ImageIcon, Loader2, Megaphone, Palette, RotateCcw, Save, Settings2, Shield, Upload, X } from "lucide-react";
+import { CheckCircle2, Globe2, ImageIcon, Loader2, Megaphone, Palette, Plus, RotateCcw, Save, Settings2, Shield, Trash2, Upload, X, Code2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 import { AdminGuard } from "@/components/admin-guard";
 
-type Tab = "general" | "seo" | "branding" | "advanced" | "advertising";
+type Tab = "general" | "seo" | "branding" | "advanced" | "advertising" | "embeds";
+
+type CustomEmbed = {
+  name: string;
+  position: string;
+  html: string;
+  active: boolean;
+};
 
 type AdPlacement = {
   enabled: boolean;
@@ -72,6 +79,8 @@ export default function SettingsPage() {
     },
   });
 
+  const [embeds, setEmbeds] = useState<CustomEmbed[]>([]);
+
   const [auditPreview, setAuditPreview] = useState<string[]>([]);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
@@ -124,6 +133,9 @@ export default function SettingsPage() {
               footer: { enabled: placements.find((p) => p.location === "footer")?.enabled ?? false, allowlist: placements.find((p) => p.location === "footer")?.allowlist ?? "", scriptUrl: placements.find((p) => p.location === "footer")?.scriptUrl ?? "" },
             },
           });
+        }
+        if (Array.isArray(data.customEmbeds)) {
+          setEmbeds(data.customEmbeds as CustomEmbed[]);
         }
       })
       .catch(() => {})
@@ -197,6 +209,7 @@ export default function SettingsPage() {
         location: key,
         ...advertising.placements[key],
       })),
+      customEmbeds: embeds,
     };
 
     try {
@@ -215,6 +228,7 @@ export default function SettingsPage() {
     { id: "seo", label: "SEO & Sharing", icon: <Globe2 size={15} /> },
     { id: "branding", label: "Branding", icon: <Palette size={15} /> },
     { id: "advertising", label: "Advertising", icon: <Megaphone size={15} /> },
+    { id: "embeds", label: "Custom Embeds", icon: <Code2 size={15} /> },
     { id: "advanced", label: "Advanced", icon: <Shield size={15} /> },
   ];
 
@@ -514,6 +528,69 @@ export default function SettingsPage() {
               <ul>{auditPreview.map((line, index) => <li key={index}>{line}</li>)}</ul>
             </div>
           )}
+        </section>
+      )}
+
+      {tab === "embeds" && (
+        <section className="workspace-panel settings-panel">
+          <h2>Custom Embeds</h2>
+          <p className="settings-hint">Add custom scripts, widgets, or third-party embeds (e.g., TradingView ticker tape, social widgets) to specific positions on every public page. Paste the full HTML snippet including any &lt;script&gt; tags.</p>
+
+          <div className="embeds-list">
+            {embeds.length === 0 && (
+              <p className="empty-state">No custom embeds yet. Click &ldquo;Add Embed&rdquo; to create one.</p>
+            )}
+
+            {embeds.map((embed, index) => (
+              <article key={index} className="embed-card">
+                <div className="embed-card-header">
+                  <input
+                    className="embed-name-input"
+                    value={embed.name}
+                    onChange={(e) => setEmbeds(embeds.map((em, i) => i === index ? { ...em, name: e.target.value } : em))}
+                    placeholder="Embed name (e.g., Sensex/Nifty Ticker)"
+                  />
+                  <select
+                    className="embed-position-select"
+                    value={embed.position}
+                    onChange={(e) => setEmbeds(embeds.map((em, i) => i === index ? { ...em, position: e.target.value } : em))}
+                  >
+                    <option value="head">Head (top of page)</option>
+                    <option value="body_top">Body Top (above header)</option>
+                    <option value="homepage_below_tri_col">Homepage — Below 3rd Column (after ad)</option>
+                    <option value="footer_top">Footer Top (above footer)</option>
+                    <option value="body_bottom">Body Bottom (below footer)</option>
+                  </select>
+                  <label className="embed-active-toggle">
+                    <input type="checkbox" checked={embed.active} onChange={(e) => setEmbeds(embeds.map((em, i) => i === index ? { ...em, active: e.target.checked } : em))} />
+                    <span>{embed.active ? "Active" : "Inactive"}</span>
+                  </label>
+                  <button type="button" className="embed-delete-btn" onClick={() => setEmbeds(embeds.filter((_, i) => i !== index))} title="Remove embed">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <textarea
+                  className="embed-html-textarea"
+                  value={embed.html}
+                  onChange={(e) => setEmbeds(embeds.map((em, i) => i === index ? { ...em, html: e.target.value } : em))}
+                  rows={6}
+                  placeholder={'Paste HTML/script here, e.g.,\n<script type="module" src="https://widgets.tradingview-widget.com/w/en/tv-ticker-tape.js"></script>\n<tv-ticker-tape symbols="NSE:NIFTY,BSE:SENSEX"></tv-ticker-tape>'}
+                  spellCheck={false}
+                />
+              </article>
+            ))}
+          </div>
+
+          <button type="button" className="secondary-button embed-add-btn" onClick={() => setEmbeds([...embeds, { name: "", position: "body_top", html: "", active: false }])}>
+            <Plus size={15} /> Add Embed
+          </button>
+
+          <div className="embed-example">
+            <strong>Example — TradingView Sensex/Nifty Ticker:</strong>
+            <pre>{`<script type="module" src="https://widgets.tradingview-widget.com/w/en/tv-ticker-tape.js"></script>
+<tv-ticker-tape symbols="NSE:NIFTY,BSE:SENSEX"></tv-ticker-tape>`}</pre>
+            <p className="settings-hint">Set position to &ldquo;Body Top&rdquo; to show it above the header on every page.</p>
+          </div>
         </section>
       )}
     </main>

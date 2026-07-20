@@ -1,5 +1,7 @@
-import { getCategoryArticles, getSiteSettingsPublic } from "@/lib/public-data";
+import { getCategoryArticles, getSiteSettingsPublic, getSponsoredForCategory, getArticlesByIds } from "@/lib/public-data";
 import { ArticleCard } from "@/components/article-card";
+import { AdSlot } from "@/components/ad-slot";
+import { SponsoredCard } from "@/components/sponsored-card";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -33,8 +35,19 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const { category, articles, total, totalPages } = result;
 
+  // Fetch sponsored content pinned to this category
+  const sponsored = page === 1 ? await getSponsoredForCategory(slug) : [];
+  const pinnedArticleIds = sponsored
+    .filter((s) => s.type === "article_pin" && s.articleId)
+    .map((s) => s.articleId as string);
+  const pinnedArticles = await getArticlesByIds(pinnedArticleIds);
+  const pinnedArticlesById = new Map(pinnedArticles.map((a) => [a.id, a]));
+
   return (
     <div className="category-page">
+      {/* 728x90 ad above breadcrumb */}
+      <AdSlot slot="category_above_breadcrumb" page="category" categorySlug={slug} />
+
       <nav className="breadcrumb">
         <Link href="/">Home</Link>
         <span className="breadcrumb-sep">/</span>
@@ -47,10 +60,23 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
       </header>
 
-      {articles.length === 0 ? (
+      {articles.length === 0 && sponsored.length === 0 ? (
         <div className="empty-state">No articles in this category yet.</div>
       ) : (
         <>
+          {/* Sponsored pin-to-top items (only on page 1) */}
+          {page === 1 && sponsored.length > 0 && (
+            <div className="category-sponsored-list">
+              {sponsored.map((item) => (
+                <SponsoredCard
+                  key={item.id}
+                  item={item}
+                  article={item.articleId ? (pinnedArticlesById.get(item.articleId) ?? null) : null}
+                />
+              ))}
+            </div>
+          )}
+
           {/* First article as lead */}
           {articles[0] && page === 1 && (
             <div className="category-lead">

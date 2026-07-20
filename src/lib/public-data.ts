@@ -1,5 +1,5 @@
 import { connectToDatabase } from "./db";
-import { Article, Category, Menu, SiteSettings, Tag, Subscriber } from "./models";
+import { Article, Category, Menu, SiteSettings, Tag, Subscriber, Advertisement, SponsoredContent } from "./models";
 import { cacheGet, cacheSet } from "./redis";
 import crypto from "crypto";
 
@@ -220,6 +220,18 @@ export async function getArticleBySlug(slug: string): Promise<PublicArticle | nu
   return result;
 }
 
+/** Fetch multiple published articles by their IDs (used for sponsored pin-to-top). */
+export async function getArticlesByIds(ids: string[]): Promise<PublicArticle[]> {
+  if (ids.length === 0) return [];
+  await connectToDatabase();
+  const articles = await Article.find({ _id: { $in: ids }, status: "published" })
+    .populate("authorId", "name")
+    .populate("categoryIds", "name slug")
+    .populate("tagIds", "name slug")
+    .lean() as unknown as Record<string, unknown>[];
+  return articles.map(toPublicArticle);
+}
+
 export async function getRelatedArticles(articleId: string, categoryIds: string[], limit = 5): Promise<PublicArticle[]> {
   await connectToDatabase();
   const articles = await Article.find({
@@ -422,4 +434,227 @@ export async function createSubscriberPublic(email: string, sourcePath: string):
     unsubscribeToken: crypto.randomBytes(32).toString("hex"),
   });
   return { success: true };
+}
+
+
+// --- Advertising (public ad resolution) -----------------------------------
+
+export type PublicAd = {
+  id: string;
+  name: string;
+  slot: string;
+  size: string;
+  type: string;
+  mediaUrl: string;
+  clickUrl: string;
+  rawTag: string;
+  youtubeUrl: string;
+  youtubeId: string;
+  vastUrl: string;
+  impressionPixelUrl: string;
+  clickTrackingUrl: string;
+  scope: string;
+  categorySlug: string;
+  device: string;
+};
+
+export type PublicSponsored = {
+  id: string;
+  type: string;
+  categorySlug: string;
+  articleId: string | null;
+  title: string;
+  imageUrl: string;
+  clickUrl: string;
+  description: string;
+  label: string;
+};
+
+function toPublicAd(a: Record<string, unknown>): PublicAd {
+  return {
+    id: String(a._id),
+    name: String(a.name || ""),
+    slot: String(a.slot || ""),
+    size: String(a.size || ""),
+    type: String(a.type || ""),
+    mediaUrl: String(a.mediaUrl || ""),
+    clickUrl: String(a.clickUrl || ""),
+    rawTag: String(a.rawTag || ""),
+    youtubeUrl: String(a.youtubeUrl || ""),
+    youtubeId: String(a.youtubeId || ""),
+    vastUrl: String(a.vastUrl || ""),
+    impressionPixelUrl: String(a.impressionPixelUrl || ""),
+    clickTrackingUrl: String(a.clickTrackingUrl || ""),
+    scope: String(a.scope || "all"),
+    categorySlug: String(a.categorySlug || ""),
+    device: String(a.device || "all"),
+  };
+}
+
+/**
+ * Detect device type from a User-Agent string.
+ * Returns "mobile" for phones/tablets, "desktop" for everything else.
+ */
+export function detectDevice(userAgent: string | null | undefined): "desktop" | "mobile" {
+  if (!userAgent) return "desktop";
+  const ua = userAgent.toLowerCase();
+  // Tablets (iPad, Android tablets) and phones are both "mobile" for ad targeting
+  if (/mobile|android|iphone|ipod|ipad|tablet|kindle|silk|blackberry|opera mini|windows phone/i.test(ua)) {
+    return "mobile";
+  }
+  return "desktop";
+}
+
+function toPublicSponsored(s: Record<string, unknown>): PublicSponsored {
+  return {
+    id: String(s._id),
+    type: String(s.type || "ad_card"),
+    categorySlug: String(s.categorySlug || ""),
+    articleId: s.articleId ? String((s.articleId as Record<string, unknown>)._id ?? s.articleId) : null,
+    title: String(s.title || ""),
+    imageUrl: String(s.imageUrl || ""),
+    clickUrl: String(s.clickUrl || ""),
+    description: String(s.description || ""),
+    label: String(s.label || "Sponsored"),
+  };
+}
+
+/**
+ * Replace cache-busting macros in a tag/pixel URL with a random value.
+ * Supports: [timestamp], [CACHEBUSTER], ord=[timestamp]
+ */
+export function replaceCacheBusting(input: string): string {
+  const random = Date.now() + Math.floor(Math.random() * 1_000_000);
+  return input
+    .replaceAll("[timestamp]", String(random))
+    .replaceAll("[CACHEBUSTER]", String(random))
+    .replaceAll("ord=[timestamp]", "ord=" + random);
+}
+
+/**
+ * Check if an ad is currently active (within date range if dates are set).
+ */
+function isAdLive(a: Record<string, unknown>): boolean {
+  if (!a.active) return false;
+  const now = new Date();
+  if (a.startDate && new Date(a.startDate as string) > now) return false;
+  if (a.endDate && new Date(a.endDate as string) < now) return false;
+  return true;
+}
+
+/**
+ * Resolve the winning ad for a given slot + context.
+ * Priority: category-specific > page-specific > ALL fallback.
+ * Device filter: "all" matches any device; "desktop"/"mobile" must match.
+ * Among matches at the same level, highest priority field wins.
+ */
+export async function resolveAdForSlot(
+  slot: string,
+  context: { page?: string; categorySlug?: string; device?: "desktop" | "mobile" } = {}
+): Promise<PublicAd | null> {
+  const device = context.device || "desktop";
+  const cacheKey = `cache:public:ad:${slot}:${context.page || ""}:${context.categorySlug || ""}:${device}`;
+  const cached = await cacheGet<PublicAd | null>(cacheKey);
+  if (cached !== null && cached !== undefined) return cached;
+
+  await connectToDatabase();
+  const candidates = await Advertisement.find({ slot, active: true }).lean() as Array<Record<string, unknown>>;
+
+  // Filter by scheduling + device
+  const live = candidates.filter((a) => {
+    if (!isAdLive(a)) return false;
+    const adDevice = String(a.device || "all");
+    // "all" matches any device; otherwise must match exactly
+    if (adDevice !== "all" && adDevice !== device) return false;
+    return true;
+  });
+  if (live.length === 0) {
+    await cacheSet(cacheKey, null, 60);
+    return null;
+  }
+
+  // Priority tiers: 1 = category-specific, 2 = page-specific, 3 = ALL
+  const tier = (a: Record<string, unknown>): number => {
+    const scope = String(a.scope);
+    if (scope === "category" && a.categorySlug && context.categorySlug && String(a.categorySlug) === context.categorySlug) return 1;
+    if (scope === "article" && context.page === "article") {
+      if (a.categorySlug && context.categorySlug && String(a.categorySlug) === context.categorySlug) return 1;
+      if (!a.categorySlug) return 2;
+    }
+    if (scope === "homepage" && context.page === "homepage") return 2;
+    if (scope === "all") return 3;
+    return 99; // no match
+  };
+
+  const ranked = live
+    .map((a) => ({ ad: a, tier: tier(a), priority: Number(a.priority ?? 0) }))
+    .filter((x) => x.tier < 99)
+    .sort((a, b) => a.tier - b.tier || b.priority - a.priority);
+
+  const winner = ranked[0]?.ad;
+  const result = winner ? toPublicAd(winner) : null;
+  await cacheSet(cacheKey, result, 60);
+  return result;
+}
+
+/**
+ * Batch-resolve ads for multiple slots (e.g., homepage has many slots).
+ * Returns a map of slot -> PublicAd | null.
+ */
+export async function resolveAdsForSlots(
+  slots: string[],
+  context: { page?: string; categorySlug?: string; device?: "desktop" | "mobile" } = {}
+): Promise<Record<string, PublicAd | null>> {
+  const entries = await Promise.all(
+    slots.map(async (slot) => [slot, await resolveAdForSlot(slot, context)] as const)
+  );
+  return Object.fromEntries(entries);
+}
+
+/**
+ * Fetch the interstitial ad (web or mobile based on isMobile flag).
+ */
+export async function getInterstitialAd(isMobile: boolean): Promise<PublicAd | null> {
+  return resolveAdForSlot(isMobile ? "interstitial_mobile" : "interstitial_web", { page: "all", device: isMobile ? "mobile" : "desktop" });
+}
+
+/**
+ * Fetch sponsored content pinned to a category.
+ * Returns active sponsored items sorted by priority (desc).
+ */
+export async function getSponsoredForCategory(categorySlug: string): Promise<PublicSponsored[]> {
+  const cacheKey = `cache:public:sponsored:${categorySlug}`;
+  const cached = await cacheGet<PublicSponsored[]>(cacheKey);
+  if (cached) return cached;
+
+  await connectToDatabase();
+  const items = await SponsoredContent.find({ categorySlug, active: true })
+    .sort({ priority: -1, createdAt: -1 })
+    .populate("articleId")
+    .lean() as Array<Record<string, unknown>>;
+
+  const result = items.map(toPublicSponsored);
+  await cacheSet(cacheKey, result, 60);
+  return result;
+}
+
+/**
+ * Fetch VAST XML from a VAST URL and extract the first media file URL.
+ * This is a "VAST-lite" approach — it does not support VPAID or tracking events.
+ */
+export async function resolveVastMediaUrl(vastUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(vastUrl, { headers: { "User-Agent": "BehindTheHeadlines/1.0" } });
+    if (!res.ok) return null;
+    const xml = await res.text();
+    // Extract the first <MediaFile> CDATA or text content
+    const match = xml.match(/<MediaFile[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/MediaFile>/i);
+    if (!match) return null;
+    const url = match[1].trim();
+    // Basic validation — must be a URL
+    try { new URL(url); } catch { return null; }
+    return url;
+  } catch {
+    return null;
+  }
 }

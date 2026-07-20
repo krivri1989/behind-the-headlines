@@ -1,5 +1,5 @@
 import { connectToDatabase } from "./db";
-import { Article, Category, Tag, Menu, RssSource, Subscriber, AuditLog, Media, SiteSettings, User, RssImport } from "./models";
+import { Article, Category, Tag, Menu, RssSource, Subscriber, AuditLog, Media, SiteSettings, User, RssImport, Advertisement, SponsoredContent } from "./models";
 import { getSession } from "./auth";
 import { cacheGet, cacheSet, invalidateContentCache, invalidateSettingsCache, invalidateMenuCache, invalidateCategoriesCache, invalidateArticleCache, cacheKeys } from "./redis";
 import { listAllObjects, getObjectUrl, isStorageConfigured } from "./storage";
@@ -561,4 +561,149 @@ export async function getRssImports(options: { sourceId?: string; search?: strin
     items = items.filter((it) => it.sourceName.toLowerCase().includes(q) || it.status.toLowerCase().includes(q) || (it.error && it.error.toLowerCase().includes(q)));
   }
   return items.slice(0, limit);
+}
+
+
+// --- Advertisement CRUD ---------------------------------------------------
+
+export type AdInput = {
+  name: string;
+  slot: string;
+  size: string;
+  type: string;
+  mediaUrl?: string;
+  clickUrl?: string;
+  rawTag?: string;
+  youtubeUrl?: string;
+  youtubeId?: string;
+  vastUrl?: string;
+  impressionPixelUrl?: string;
+  clickTrackingUrl?: string;
+  scope?: string;
+  categorySlug?: string;
+  device?: string;
+  active?: boolean;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  priority?: number;
+};
+
+export async function getAds(filters: { slot?: string; scope?: string; active?: boolean } = {}): Promise<Record<string, unknown>[]> {
+  await connectToDatabase();
+  const filter: Record<string, unknown> = {};
+  if (filters.slot) filter.slot = filters.slot;
+  if (filters.scope) filter.scope = filters.scope;
+  if (typeof filters.active === "boolean") filter.active = filters.active;
+  const ads = await Advertisement.find(filter).sort({ createdAt: -1 }).lean() as Array<Record<string, unknown>>;
+  return ads.map((a) => {
+    a.id = String(a._id);
+    delete a._id;
+    delete a.__v;
+    return a;
+  });
+}
+
+export async function createAd(input: AdInput): Promise<Record<string, unknown> | null> {
+  await connectToDatabase();
+  const ad = await Advertisement.create({
+    name: input.name,
+    slot: input.slot,
+    size: input.size,
+    type: input.type,
+    mediaUrl: input.mediaUrl || "",
+    clickUrl: input.clickUrl || "",
+    rawTag: input.rawTag || "",
+    youtubeUrl: input.youtubeUrl || "",
+    youtubeId: input.youtubeId || "",
+    vastUrl: input.vastUrl || "",
+    impressionPixelUrl: input.impressionPixelUrl || "",
+    clickTrackingUrl: input.clickTrackingUrl || "",
+    scope: input.scope || "all",
+    categorySlug: input.categorySlug || "",
+    device: input.device || "all",
+    active: input.active ?? false,
+    startDate: input.startDate || null,
+    endDate: input.endDate || null,
+    priority: input.priority ?? 0,
+  });
+  return toObject(ad);
+}
+
+export async function updateAd(id: string, input: Partial<AdInput>): Promise<Record<string, unknown> | null> {
+  await connectToDatabase();
+  const ad = await Advertisement.findByIdAndUpdate(id, { $set: input }, { new: true });
+  return toObject(ad);
+}
+
+export async function deleteAd(id: string): Promise<void> {
+  await connectToDatabase();
+  await Advertisement.findByIdAndDelete(id);
+}
+
+export async function incrementAdImpression(id: string): Promise<void> {
+  await connectToDatabase();
+  await Advertisement.updateOne({ _id: id }, { $inc: { impressions: 1 } });
+}
+
+export async function incrementAdClick(id: string): Promise<void> {
+  await connectToDatabase();
+  await Advertisement.updateOne({ _id: id }, { $inc: { clicks: 1 } });
+}
+
+
+// --- SponsoredContent CRUD ------------------------------------------------
+
+export type SponsoredInput = {
+  type: string;
+  categorySlug: string;
+  articleId?: string;
+  title?: string;
+  imageUrl?: string;
+  clickUrl?: string;
+  description?: string;
+  label?: string;
+  active?: boolean;
+  priority?: number;
+};
+
+export async function getSponsoredContent(filters: { categorySlug?: string; active?: boolean } = {}): Promise<Record<string, unknown>[]> {
+  await connectToDatabase();
+  const filter: Record<string, unknown> = {};
+  if (filters.categorySlug) filter.categorySlug = filters.categorySlug;
+  if (typeof filters.active === "boolean") filter.active = filters.active;
+  const items = await SponsoredContent.find(filter).sort({ priority: -1, createdAt: -1 }).lean() as Array<Record<string, unknown>>;
+  return items.map((s) => {
+    s.id = String(s._id);
+    delete s._id;
+    delete s.__v;
+    return s;
+  });
+}
+
+export async function createSponsoredContent(input: SponsoredInput): Promise<Record<string, unknown> | null> {
+  await connectToDatabase();
+  const item = await SponsoredContent.create({
+    type: input.type,
+    categorySlug: input.categorySlug,
+    articleId: input.articleId || null,
+    title: input.title || "",
+    imageUrl: input.imageUrl || "",
+    clickUrl: input.clickUrl || "",
+    description: input.description || "",
+    label: input.label || "Sponsored",
+    active: input.active ?? true,
+    priority: input.priority ?? 0,
+  });
+  return toObject(item);
+}
+
+export async function updateSponsoredContent(id: string, input: Partial<SponsoredInput>): Promise<Record<string, unknown> | null> {
+  await connectToDatabase();
+  const item = await SponsoredContent.findByIdAndUpdate(id, { $set: input }, { new: true });
+  return toObject(item);
+}
+
+export async function deleteSponsoredContent(id: string): Promise<void> {
+  await connectToDatabase();
+  await SponsoredContent.findByIdAndDelete(id);
 }

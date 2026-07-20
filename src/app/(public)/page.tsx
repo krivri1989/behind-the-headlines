@@ -1,5 +1,8 @@
-import { getLatestNews, getVisibleCategories, getCategorySection, getTrendingArticles, getSiteSettingsPublic, getLatestByCategory, getSpecialArticles, getPublicMenu } from "@/lib/public-data";
+import { getLatestNews, getVisibleCategories, getCategorySection, getTrendingArticles, getSiteSettingsPublic, getLatestByCategory, getSpecialArticles, getPublicMenu, getSponsoredForCategory, getArticlesByIds, type PublicSponsored } from "@/lib/public-data";
 import { ArticleCard } from "@/components/article-card";
+import { AdSlot } from "@/components/ad-slot";
+import { SponsoredCard } from "@/components/sponsored-card";
+import { CustomEmbedsForPosition } from "@/components/custom-embeds";
 import Link from "next/link";
 import type { PublicArticle } from "@/lib/public-data";
 
@@ -78,6 +81,21 @@ export default async function HomePage() {
     ...section,
     articles: section.articles.filter((a) => !categorySectionUsedIds.has(a.id)).slice(0, 6),
   }));
+
+  // Fetch sponsored content for each category section (for pin-to-top)
+  const sponsoredByCategory = await Promise.all(
+    dedupedCategorySections.map((section) =>
+      section.category ? getSponsoredForCategory(section.category.slug) : Promise.resolve([])
+    )
+  );
+
+  // Fetch the full article data for any sponsored article_pin items
+  const pinnedArticleIds = sponsoredByCategory
+    .flat()
+    .filter((s) => s.type === "article_pin" && s.articleId)
+    .map((s) => s.articleId as string);
+  const pinnedArticles = await getArticlesByIds(pinnedArticleIds);
+  const pinnedArticlesById = new Map(pinnedArticles.map((a) => [a.id, a]));
 
   return (
     <div className="homepage">
@@ -167,6 +185,8 @@ export default async function HomePage() {
               <h2 className="section-title">{jjdSpecialDeduped.label}</h2>
               {jjdSpecialDeduped.articles[0] && <Link href={"/category/jjd-special"} className="section-more">More &rsaquo;</Link>}
             </div> */}
+            {/* 300x250 ad at top of 3rd column */}
+            <AdSlot slot="homepage_tri_col_top" page="homepage" />
             <div className="tri-col-list">
               {jjdSpecialDeduped.articles.map((article) => (
                 <div key={article.id} className="tri-col-item">
@@ -178,14 +198,20 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Custom embeds — below 3rd column (e.g., Sensex/Nifty ticker tape) */}
+      <CustomEmbedsForPosition embeds={((settings?.customEmbeds as Array<Record<string, unknown>>) || []).map((e) => ({ name: String(e.name || ""), position: String(e.position || ""), html: String(e.html || ""), active: Boolean(e.active) }))} position="homepage_below_tri_col" />
+
       {/* Main content + sidebar */}
       <div className="home-content-layout">
         <div className="home-main-col">
           {/* Category sections */}
           {dedupedCategorySections.map((section, i) => {
             if (!section.category || section.articles.length === 0) return null;
+            const sponsored = sponsoredByCategory[i] || [];
             return (
               <section className="home-section" key={i}>
+                {/* 728x90 ad above each category section */}
+                <AdSlot slot="homepage_category_top" page="homepage" categorySlug={section.category.slug} />
                 <div className="section-header">
                   <h2 className="section-title">{section.category.name}</h2>
                   <Link href={"/category/" + section.category.slug} className="section-more">More {section.category.name} &rsaquo;</Link>
@@ -195,6 +221,14 @@ export default async function HomePage() {
                     <ArticleCard article={section.articles[0]} variant="default" />
                   )}
                   <div className="category-section-list">
+                    {/* Sponsored pin-to-top items first */}
+                    {sponsored.map((item) => (
+                      <SponsoredCard
+                        key={item.id}
+                        item={item}
+                        article={item.articleId ? (pinnedArticlesById.get(item.articleId) ?? null) : null}
+                      />
+                    ))}
                     {section.articles.slice(1, 6).map((article) => (
                       <ArticleCard key={article.id} article={article} variant="compact" />
                     ))}
@@ -207,6 +241,9 @@ export default async function HomePage() {
 
         {/* Sidebar */}
         <aside className="home-sidebar">
+          {/* 300x250/600 ad at top of sidebar */}
+          <AdSlot slot="homepage_sidebar_top" page="homepage" />
+
           {/* Trending */}
           <section className="sidebar-section">
             <h2 className="sidebar-title">Trending</h2>

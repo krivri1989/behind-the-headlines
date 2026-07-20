@@ -98,6 +98,12 @@ const siteSettingsSchema = new Schema({
   cookieConsent: { type: Boolean, default: true },
   advertisingEnabled: { type: Boolean, default: false },
   adPlacements: [adPlacementSchema],
+  customEmbeds: [{
+    name: { type: String, default: "" },
+    position: { type: String, enum: ["head", "body_top", "body_bottom", "footer_top", "homepage_below_tri_col"], default: "body_top" },
+    html: { type: String, default: "" },
+    active: { type: Boolean, default: false },
+  }],
 }, { timestamps: true });
 export const SiteSettings = models.SiteSettings ?? model("SiteSettings", siteSettingsSchema);
 
@@ -121,3 +127,79 @@ const pageSchema = new Schema({
   authorId: { type: Schema.Types.ObjectId, ref: "User" },
 }, { timestamps: true });
 export const Page = models.Page ?? model("Page", pageSchema);
+
+// --- Advertising ---------------------------------------------------------
+
+const adSchema = new Schema({
+  name: { type: String, required: true, trim: true },
+  slot: { type: String, required: true, enum: [
+    "homepage_tri_col_top",
+    "homepage_sidebar_top",
+    "homepage_category_top",
+    "category_above_breadcrumb",
+    "article_above_breadcrumb",
+    "article_related_stories",
+    "interstitial_web",
+    "interstitial_mobile",
+    "video_ad",
+  ] },
+  size: { type: String, required: true, enum: ["300x250", "300x600", "728x90", "320x480", "1x1", "video"] },
+  type: { type: String, required: true, enum: ["direct", "third_party", "youtube", "vast", "tracker"] },
+
+  // For type=direct (image/gif/mp4 uploaded to RustFS or external URL)
+  mediaUrl: { type: String, default: "" },
+  clickUrl: { type: String, default: "" },
+
+  // For type=third_party (raw JS/HTML tag from DoubleClick, Flashtalking, etc.)
+  rawTag: { type: String, default: "" },
+
+  // For type=youtube
+  youtubeUrl: { type: String, default: "" },
+  youtubeId: { type: String, default: "" },
+
+  // For type=vast (VAST XML URL, fetched server-side)
+  vastUrl: { type: String, default: "" },
+
+  // Optional third-party tracking for any type
+  impressionPixelUrl: { type: String, default: "" },
+  clickTrackingUrl: { type: String, default: "" },
+
+  // Targeting
+  scope: { type: String, required: true, enum: ["all", "homepage", "category", "article"], default: "all" },
+  categorySlug: { type: String, default: "" },
+  device: { type: String, enum: ["all", "desktop", "mobile"], default: "all" },
+
+  // Scheduling & status
+  active: { type: Boolean, default: false },
+  startDate: { type: Date },
+  endDate: { type: Date },
+  priority: { type: Number, default: 0 },
+
+  // Internal counters
+  impressions: { type: Number, default: 0 },
+  clicks: { type: Number, default: 0 },
+}, { timestamps: true });
+adSchema.index({ slot: 1, scope: 1, categorySlug: 1, active: 1, startDate: 1, endDate: 1 });
+adSchema.index({ active: 1, startDate: 1, endDate: 1 });
+export const Advertisement = models.Advertisement ?? model("Advertisement", adSchema);
+
+const sponsoredContentSchema = new Schema({
+  type: { type: String, required: true, enum: ["article_pin", "ad_card"] },
+  categorySlug: { type: String, required: true, index: true },
+
+  // For type=article_pin (references a real published Article)
+  articleId: { type: Schema.Types.ObjectId, ref: "Article" },
+
+  // For type=ad_card (sponsored card linking externally)
+  title: { type: String, default: "" },
+  imageUrl: { type: String, default: "" },
+  clickUrl: { type: String, default: "" },
+  description: { type: String, default: "" },
+
+  // Common
+  label: { type: String, default: "Sponsored" },
+  active: { type: Boolean, default: true },
+  priority: { type: Number, default: 0 },
+}, { timestamps: true });
+sponsoredContentSchema.index({ categorySlug: 1, active: 1, priority: -1 });
+export const SponsoredContent = models.SponsoredContent ?? model("SponsoredContent", sponsoredContentSchema);

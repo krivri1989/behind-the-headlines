@@ -3,7 +3,7 @@
 import {
   Bell, ChevronDown, CircleHelp, FileText, FolderTree, LayoutDashboard,
   LogOut, Menu, MessageSquare, MoreHorizontal, Newspaper, Plus, Radio, Search, Settings, Tags, Users,
-  Activity, RefreshCw, Languages,
+  Activity, RefreshCw, Languages, Megaphone,
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -43,6 +43,7 @@ const adminNavigation = [
   { label: "Subscribers", icon: Users, href: "/dashboard/subscribers" },
   { label: "Comments", icon: MessageSquare, href: "/dashboard/comments" },
   { label: "RSS Audit", icon: FileText, href: "/dashboard/audit-logs" },
+  { label: "Advertisements", icon: Megaphone, href: "/dashboard/advertisements" },
 ];
 
 const editorNavigation = [

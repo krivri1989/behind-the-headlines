@@ -1,5 +1,6 @@
 import { getArticleBySlug, getRelatedArticles, getSiteSettingsPublic, getNextArticle, getPreviousArticle } from "@/lib/public-data";
 import { ArticleReader } from "@/components/article-reader";
+import { AdSlot } from "@/components/ad-slot";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -83,6 +84,9 @@ export default async function ArticlePage({ params }: Props) {
     <div className="article-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
+      {/* 728x90 ad above breadcrumb */}
+      <AdSlot slot="article_above_breadcrumb" page="article" categorySlug={primaryCategory?.slug} />
+
       <nav className="breadcrumb">
         <Link href="/">Home</Link>
         {primaryCategory && (
@@ -95,7 +99,14 @@ export default async function ArticlePage({ params }: Props) {
         <span className="breadcrumb-current">{article.title}</span>
       </nav>
 
-      <ArticleReader initialArticle={article} related={related} prevArticle={prevArticle} nextArticle={nextArticle} commentsEnabled={commentsEnabled} />
+      <ArticleReader
+        initialArticle={article}
+        related={related}
+        prevArticle={prevArticle}
+        nextArticle={nextArticle}
+        commentsEnabled={commentsEnabled}
+        sidebarAd={<AdSlot slot="article_related_stories" page="article" categorySlug={primaryCategory?.slug} />}
+      />
     </div>
   );
 }

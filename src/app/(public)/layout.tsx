@@ -1,9 +1,11 @@
 import { ReactNode } from "react";
-import { getSiteSettingsPublic, getVisibleCategories, getPublicMenu } from "@/lib/public-data";
+import { getSiteSettingsPublic, getVisibleCategories, getPublicMenu, getInterstitialAd } from "@/lib/public-data";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { CookieConsent } from "@/components/cookie-consent";
 import { SiteSettingsProvider } from "@/components/site-settings-provider";
+import { InterstitialAd } from "@/components/interstitial-ad";
+import { CustomEmbedsForPosition } from "@/components/custom-embeds";
 import "./public.css";
 
 export const dynamic = "force-dynamic";
@@ -36,11 +38,13 @@ export async function generateMetadata() {
 }
 
 export default async function PublicLayout({ children }: { children: ReactNode }) {
-  const [settings, categories, headerMenu, footerMenu] = await Promise.all([
+  const [settings, categories, headerMenu, footerMenu, interstitialWeb, interstitialMobile] = await Promise.all([
     getSiteSettingsPublic(),
     getVisibleCategories(),
     getPublicMenu("header"),
     getPublicMenu("footer"),
+    getInterstitialAd(false),
+    getInterstitialAd(true),
   ]);
 
   const primaryColor = (settings?.primaryColor as string) || "#4b2739";
@@ -50,6 +54,12 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   const footerColor = (settings?.footerColor as string) || "#1a1a1a";
   const footerTextColor = (settings?.footerTextColor as string) || "#ffffff";
   const cookieConsent = settings?.cookieConsent !== false;
+  const customEmbeds = ((settings?.customEmbeds as Array<Record<string, unknown>>) || []).map((e) => ({
+    name: String(e.name || ""),
+    position: String(e.position || ""),
+    html: String(e.html || ""),
+    active: Boolean(e.active),
+  }));
 
   return (
     <div className="public-body" style={{
@@ -60,6 +70,12 @@ export default async function PublicLayout({ children }: { children: ReactNode }
       "--pub-footer-bg": footerColor,
       "--pub-footer-text": footerTextColor,
     } as React.CSSProperties}>
+      {/* Custom embeds — head (rendered at top of body, scripts load fine) */}
+      <CustomEmbedsForPosition embeds={customEmbeds} position="head" />
+
+      {/* Custom embeds — body_top (e.g., Sensex/Nifty ticker tape) */}
+      <CustomEmbedsForPosition embeds={customEmbeds} position="body_top" />
+
       <PublicHeader
         settings={settings}
         categories={categories}
@@ -73,7 +89,15 @@ export default async function PublicLayout({ children }: { children: ReactNode }
         categories={categories}
         menuItems={footerMenu}
       />
+
+      {/* Custom embeds — footer_top */}
+      <CustomEmbedsForPosition embeds={customEmbeds} position="footer_top" />
+
+      {/* Custom embeds — body_bottom */}
+      <CustomEmbedsForPosition embeds={customEmbeds} position="body_bottom" />
+
       <CookieConsent enabled={cookieConsent} />
+      <InterstitialAd webAd={interstitialWeb} mobileAd={interstitialMobile} />
     </div>
   );
 }

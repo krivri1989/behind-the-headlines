@@ -130,12 +130,14 @@ export function ArticleReader({
   prevArticle,
   nextArticle,
   commentsEnabled,
+  sidebarAd,
 }: {
   initialArticle: PublicArticle;
   related: PublicArticle[];
   prevArticle: PublicArticle | null;
   nextArticle: PublicArticle | null;
   commentsEnabled?: boolean;
+  sidebarAd?: React.ReactNode;
 }) {
   return (
     <div className="article-reader">
@@ -147,6 +149,9 @@ export function ArticleReader({
 
       <aside className="article-sidebar">
         <div className="article-sidebar-inner">
+          {/* 300x250 ad at top of Related Stories sidebar (passed from server) */}
+          {sidebarAd}
+
           <h2 className="sidebar-title">Related Stories</h2>
           <div className="article-related-list">
             {related.map((rel) => (
