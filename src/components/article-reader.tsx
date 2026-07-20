@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { stripLeadingImages, stripAgencyArtifacts } from "@/lib/content-helpers";
+import { processVideoEmbeds } from "@/lib/video-embeds";
 import { ArticleComments } from "./article-comments";
 import { useSiteSettings } from "@/components/site-settings-provider";
 import type { PublicArticle } from "@/lib/public-data";
 
 function cleanContent(html: string): string {
-  return stripAgencyArtifacts(stripLeadingImages(html));
+  return processVideoEmbeds(stripAgencyArtifacts(stripLeadingImages(html)));
 }
 
 function FeaturedImage({ image, title, fallback }: { image: PublicArticle["featuredImage"]; title: string; fallback?: string }) {

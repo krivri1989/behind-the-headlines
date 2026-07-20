@@ -309,6 +309,21 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
 .article-content figure { margin: 18px 0; }
 .article-content figcaption { font-size: 13px; color: var(--pub-text-muted); text-align: center; margin-top: 6px; }
 
+/* ===== Video Embeds ===== */
+.video-embed { margin: 24px 0; position: relative; width: 100%; overflow: hidden; border-radius: var(--pub-radius); background: #000; }
+.video-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
+.video-embed-wide { aspect-ratio: 16/9; max-width: 800px; }
+.video-embed-short { aspect-ratio: 9/16; max-width: 340px; margin: 24px auto; border-radius: 12px; }
+.video-embed-instagram { aspect-ratio: 9/16; max-width: 340px; margin: 24px auto; border-radius: 12px; }
+.video-embed-facebook { aspect-ratio: 16/9; max-width: 560px; }
+.video-embed-twitter { min-height: 300px; max-width: 550px; aspect-ratio: 4/5; }
+@media (max-width: 768px) {
+  .video-embed-wide { max-width: 100%; }
+  .video-embed-short, .video-embed-instagram { max-width: 280px; }
+  .video-embed-facebook { max-width: 100%; }
+  .video-embed-twitter { max-width: 100%; }
+}
+
 .article-tags { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 0; border-top: 1px solid var(--pub-border); margin-top: 24px; }
 
 /* ===== Comments ===== */

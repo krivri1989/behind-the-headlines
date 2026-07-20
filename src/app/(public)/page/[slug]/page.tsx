@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/db";
 import { Page } from "@/lib/models";
 import { getSiteSettingsPublic } from "@/lib/public-data";
+import { processVideoEmbeds } from "@/lib/video-embeds";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -52,7 +53,7 @@ export default async function PublicPage({ params }: Props) {
       <article className="static-page-content">
         <h1 className="static-page-title">{page.title}</h1>
         {page.excerpt && <p className="static-page-excerpt">{page.excerpt}</p>}
-        <div className="article-content" dangerouslySetInnerHTML={{ __html: page.content }} />
+        <div className="article-content" dangerouslySetInnerHTML={{ __html: processVideoEmbeds(page.content) }} />
       </article>
     </div>
   );
